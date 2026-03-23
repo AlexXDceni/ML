@@ -3,9 +3,13 @@
 #include <initializer_list>
 #include <fstream>
 #include <random>
+#include <cmath>
+#include <string>
 using namespace std;
 
-ifstream fin ("ml.in");
+string INPUT_FILE = "ml.in";
+string TARGET_FILE = "targets.in";
+
 //ifstream fout ("ml.out");
 
 double BIAS = 0.01;
@@ -16,9 +20,30 @@ double get_random_weight(){
     return uniform_real_distribution<double>{-1, 1}(gen);
 }
 
+// Activation functions
+
 double RELU(double value){
     return (value > 0) ? value : 0;
 }
+
+double Leaky_RELU(double value) {
+    return (value > 0) ? value : 0.01 * value;
+}
+
+double SIGMOID(double value) {
+    return 1.0 / (1.0 + exp(-value));
+}
+
+double TANH(double value) {
+    return tanh(value); 
+}
+
+double ELU(double value, double alpha = 1.0) {
+    return (value > 0) ? value : alpha * (exp(value) - 1);
+}
+
+
+
 
 class Input_Node
 {
@@ -180,6 +205,7 @@ public:
 
         feedZero();
 
+        ifstream fin (INPUT_FILE);
 
         for( auto &node : input.nodes ){
             if (!fin.is_open()) {
@@ -192,6 +218,8 @@ public:
                 return; 
             }
         }
+
+        fin.close();
 
         bool areHiddenLayers = (hidden.size() > 0) ? 1 : 0;
 
@@ -282,7 +310,36 @@ public:
         cout << "  Node " << i << " | Value: " << output.nodes[i].value 
              << " | Bias: " << output.nodes[i].bias << endl;
     }
+
+    cout <<"\n[LOSS]\n";
+    cout<<"  "<<calculateCost()<<'\n';
     cout << "====================================================" << endl;
+}
+
+    double calculateCost() {
+
+        vector<double> targets;
+        ifstream target_in (TARGET_FILE);
+        
+        double tmp;
+        while(target_in>>tmp){
+            targets.push_back(tmp);
+        }
+        
+
+        if (targets.size() != output.nodes.size()) {
+            cerr << "Error: Invalid number of outputs." << endl;
+            return -1;
+        }
+
+        double totalError = 0;
+
+        for (int i = 0; i < output.nodes.size(); ++i) {
+            double error = targets[i] - output.nodes[i].value;
+            totalError += error * error; 
+        }
+
+        return totalError / output.nodes.size();
 }
 
 };
