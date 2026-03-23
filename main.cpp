@@ -94,7 +94,6 @@ TrainingData loadData(int inNodes, int outNodes) {
 }
 
 
-
 class Input_Node
 {
 public:
@@ -332,7 +331,7 @@ public:
     cout << "Output Layer: " << output.nodes.size() << " nodes" << endl;
     }
 
-void printResults() {
+    void printResults() {
     cout << "--- Output ---" << endl;
     for (int i = 0; i < output.nodes.size(); ++i) {
         double val = (output.nodes[i].value < 0.0001) ? 0 : output.nodes[i].value;
@@ -514,23 +513,57 @@ void printResults() {
         }
     }
 
+
+    // Predict
+
+    vector<double> predict(const vector<double>& inputValues) {
+
+        this->feedForward(inputValues);
+        
+        vector<double> results;
+        
+        for (auto& node : output.nodes) {
+            if (node.value >= 0.5) {
+                results.push_back(1);
+            } else {
+                results.push_back(0);
+            }
+        }
+        
+        return results;
+}
+
 };
 
 int main()
-{
-    Network nn = Network({2,8,7,5,1});
-    
-    TrainingData data = loadData(2,1);
-    
-    nn.evolve(20000, 0.05, data);
+{   
 
-    for (size_t i = 0; i < data.inputs.size(); ++i) {
-        nn.feedForward(data.inputs[i]);
-        nn.printResults();
+    int input = 3;
+    int output = 1;
+
+    Network nn = Network({input,8,7,5,output});
+    TrainingData data = loadData(input,output);
+    
+    // nn.evolve(20000, 0.05, data);
+
+    // for (size_t i = 0; i < data.inputs.size(); ++i) {
+    //     nn.feedForward(data.inputs[i]);
+    //     nn.printResults();
+    // }
+
+    // nn.saveModal("xor.txt");
+
+    nn.loadModal("xor.txt");
+    
+    for(int i = 0; i < data.inputs.size(); i++) {
+
+        vector<double> result = nn.predict(data.inputs[i]);
+        
+        cout << "Input " << i << ": ";
+        for(double val : data.inputs[i]) cout << val << " ";
+        
+        cout << "-> AI says: " << result[0] << endl;
     }
-    
-    
-    //nn.saveModal("trained_brain.txt");
 
     return 0;
 }
