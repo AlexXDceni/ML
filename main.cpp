@@ -10,10 +10,7 @@ using namespace std;
 string INPUT_FILE = "ml.in";
 string TARGET_FILE = "targets.in";
 
-//ifstream fout ("ml.out");
-
 double BIAS = 0.01;
-double learning_rate = 0.03;
 
 
 double get_random(){
@@ -44,6 +41,57 @@ double ELU(double value, double alpha = 1.0) {
     return (value > 0) ? value : alpha * (exp(value) - 1);
 }
 
+struct TrainingData {
+    vector<vector<double>> inputs;
+    vector<vector<double>> targets;
+};
+
+TrainingData loadData(int inNodes, int outNodes) {
+    TrainingData data;
+    ifstream DIin(INPUT_FILE);
+    ifstream DTin(TARGET_FILE);
+
+    if (!DIin.is_open() || !DTin.is_open()) {
+        cerr << "Error: Could not open " << INPUT_FILE << " or " << TARGET_FILE << endl;
+        return {};
+    }
+
+    double val;
+    while (DIin >> val) {
+        vector<double> row;
+        row.push_back(val);
+        for (int i = 1; i < inNodes; ++i) {
+            if (DIin >> val) row.push_back(val);
+        }
+        if (row.size() == (size_t)inNodes) {
+            data.inputs.push_back(row);
+        }
+    }
+
+    while (DTin >> val) {
+        vector<double> row;
+        row.push_back(val);
+        for (int i = 1; i < outNodes; ++i) {
+            if (DTin >> val) row.push_back(val);
+        }
+        if (row.size() == (size_t)outNodes) {
+            data.targets.push_back(row);
+        }
+    }
+
+    if (data.inputs.empty()) {
+        cerr << "Error: No data loaded from files." << endl;
+        return {};
+    }
+
+    if (data.inputs.size() != data.targets.size()) {
+        cerr << "Error: Mismatch! Inputs: " << data.inputs.size() 
+             << " | Targets: " << data.targets.size() << endl;
+        return {};
+    }
+
+    return data;
+}
 
 
 
@@ -151,6 +199,7 @@ public:
     vector<Hidden_Layer> hidden;
     Output_Layer output;
 
+
     // Initiate
 
     Network(vector<int> list) : sizes(list) {
@@ -186,47 +235,9 @@ public:
     }
 
 
-    // Read
-
-    vector<double> readInput(){
-
-        ifstream fin (INPUT_FILE);
-        vector<double> inputValues;
-        double tmp;
-        while(fin>>tmp){
-            inputValues.push_back(tmp);
-        }
-        fin.close();
-
-        if(inputValues.empty()) {
-            cerr << "Error: Input values are empty." << endl;
-            return {-1};
-        }
-
-        return inputValues;
-    }
-
-    vector<double> readTarget(){
-
-        ifstream fin (TARGET_FILE);
-        vector<double> targetValues;
-        double tmp;
-        while(fin>>tmp){
-            targetValues.push_back(tmp);
-        }
-        fin.close();
-
-        if(targetValues.empty()) {
-            cerr << "Error: Target values are empty." << endl;
-            return {-1};
-        }
-
-        return targetValues;
-    }
-
     // Save/Load
     
-    void saveModel(string filename) {
+    void saveModal(string filename) {
         ofstream fout(filename);
         if (!fout.is_open()) {
             cerr << "Error: Couldn't create save file." << endl;
@@ -265,7 +276,7 @@ public:
         cout << "Neural modal saved in: " << filename << "!" << endl;
 }
 
-    void loadModel(string filename) {
+    void loadModal(string filename) {
         ifstream fin_model(filename);
         if (!fin_model.is_open()) {
             cerr << "Error: Load file not found" << endl;
@@ -308,7 +319,10 @@ public:
         cout << "Neural modal loaded from: " << filename << "!" << endl;
 }
 
+
     // Display
+
+
 
     void printInfo() {
     cout << "Input Layer: " << input.nodes.size() << " nodes" << endl;
@@ -318,12 +332,13 @@ public:
     cout << "Output Layer: " << output.nodes.size() << " nodes" << endl;
     }
 
-    void printResults() {
-        cout << "--- Output ---" << endl;
-        for (int i = 0; i < output.nodes.size(); ++i) {
-            cout << "Node " << i << ": " << output.nodes[i].value << endl;
-        }
-        cout << "------------------------" << endl;
+void printResults() {
+    cout << "--- Output ---" << endl;
+    for (int i = 0; i < output.nodes.size(); ++i) {
+        double val = (output.nodes[i].value < 0.0001) ? 0 : output.nodes[i].value;
+        cout << "Node " << i << ": " << val << endl;
+    }
+    cout << "------------------------" << endl;
 }
 
     void displayFullNetwork(const vector<double>& targets) {
@@ -357,8 +372,6 @@ public:
              << " | Bias: " << output.nodes[i].bias << endl;
     }
 
-    cout <<"\n[LOSS]\n";
-    cout<<"  "<<calculateCost(targets)<<'\n';
     cout << "====================================================" << endl;
 }
 
@@ -378,6 +391,15 @@ public:
 
         return totalError / output.nodes.size();
 }
+
+    double getAverageLoss(const TrainingData& data) {
+        double totalLoss = 0;
+        for (size_t i = 0; i < data.inputs.size(); ++i) {
+            this->feedForward(data.inputs[i]); // Rulează linia i
+            totalLoss += this->calculateCost(data.targets[i]); // Adună eroarea
+        }
+        return totalLoss / data.inputs.size(); // Media pe tot setul
+    }
 
     void feedZero() {
 
@@ -475,82 +497,40 @@ public:
             node.bias += get_random() * rate;
     }
 
-    void evolve(int numGen, double rate, const vector<double> targets, const vector<double> inputs){
+    void evolve(int epochs, double mutationRate, const TrainingData& data) {
+        double bestLoss = getAverageLoss(data); 
 
-        this->feedForward(inputs);
-        double best_loss = this->calculateCost(targets);
-
-        for( int i = 1; i <= numGen ; ++ i ) {
-            
+        for (int e = 1; e <= epochs; ++e) {
             Network child = *this;
-            child.mutate(rate);
-            child.feedForward(inputs);
-            double new_loss = child.calculateCost(targets);
+            child.mutate(mutationRate);
+            
+            double currentLoss = child.getAverageLoss(data); 
 
-            if(new_loss < best_loss){
-                *this = child;
-                best_loss = new_loss;
-                
-                cout<<"Generation: " << i<< " | Loss: " << best_loss<<'\n';
+            if (currentLoss < bestLoss) {
+                *this = child; 
+                bestLoss = currentLoss;
+                if(e % 10 == 0) cout << "Epoch: " << e << " | Total Mean Loss: " << bestLoss << endl;
             }
         }
     }
+
 };
-
-Network create_NN(){
-
-    int input,hidden,x,output;
-    vector<int> network;
-
-    cout<<"Input nodes: ";
-    cin>>input;
-    cout<<'\n';
-    network.push_back(input);
-
-    cout<<"Hidden layer count: ";
-    cin>>hidden;
-    cout<<'\n';
-
-    for(int i = 1; i<=hidden;i++){
-        cout<<"Nodes in the layer "<< i <<": ";
-        cin>>x;
-        cout<<'\n';
-        network.push_back(x);
-    }
-
-    cout<<"Output nodes: ";
-    cin>>output;
-    cout<<'\n';
-    network.push_back(output);
-    
-    return Network( network );
-}
-
-
 
 int main()
 {
-    Network nn = Network({2,8,7,5,2});
+    Network nn = Network({2,8,7,5,1});
     
-    vector<double> inputs = nn.readInput();
-    vector<double> targets = nn.readTarget();
-
-
-    cout << "--- Before ---" << endl;
-    nn.feedForward(inputs);
-    nn.printResults();
-
+    TrainingData data = loadData(2,1);
     
-    cout << "\nBetween..." << endl;
-    nn.evolve(10000, 0.05, targets, inputs);
+    nn.evolve(20000, 0.05, data);
 
-
-    cout << "\n--- After ---" << endl;
-    nn.feedForward(inputs);
-    nn.printResults();
+    for (size_t i = 0; i < data.inputs.size(); ++i) {
+        nn.feedForward(data.inputs[i]);
+        nn.printResults();
+    }
     
     
-    //nn.saveModel("trained_brain.txt");
+    //nn.saveModal("trained_brain.txt");
 
     return 0;
 }
