@@ -181,6 +181,88 @@ public:
         output = Output_Layer(output_nodes);
     }
 
+    void saveModel(string filename) {
+        ofstream fout(filename);
+        if (!fout.is_open()) {
+            cerr << "Error: Couldn't create save file." << endl;
+            return;
+        }
+
+        for( auto e : sizes){
+            fout<<e<<' ';
+        }
+        fout<<'\n';
+
+
+        for (auto &node : input.nodes) {
+            for (double w : node.weights) {
+                fout << w << " ";
+            }
+            fout << "\n"; 
+        }
+
+        for (auto &layer : hidden) {
+            for (auto &node : layer.nodes) {
+                fout << node.bias << " "; 
+                for (double w : node.weights) {
+                    fout << w << " "; 
+                }
+                fout << "\n";
+            }
+        }
+
+        for (auto &node : output.nodes) {
+            fout << node.bias << " ";
+        }
+        fout << "\n";
+
+        fout.close();
+        cout << "Neural modal saved in: " << filename << "!" << endl;
+}
+
+    void loadModel(string filename) {
+        ifstream fin_model(filename);
+        if (!fin_model.is_open()) {
+            cerr << "Error: Load file not found" << endl;
+            return;
+        }
+
+        int temp_size;
+        for(auto current_layer_size : sizes) {
+            if (!(fin_model >> temp_size)) {
+                cerr << "Error: Model file is corrupted or incomplete." << endl;
+                return;
+            }
+            if (temp_size != current_layer_size) {
+                cerr << "Error: Network layers mismatch." << endl;
+                cerr << "Expected " << current_layer_size << " nodes, but found " << temp_size << " in file." << endl;
+                return;
+            }
+        }
+
+        for (auto &node : input.nodes) {
+            for (double &w : node.weights) {
+                fin_model >> w;
+            }
+        }
+
+        for (auto &layer : hidden) {
+            for (auto &node : layer.nodes) {
+                fin_model >> node.bias;
+                for (double &w : node.weights) {
+                    fin_model >> w;
+                }
+            }
+        }
+
+        for (auto &node : output.nodes) {
+            fin_model >> node.bias;
+        }
+
+        fin_model.close();
+        cout << "Neural modal loaded from: " << filename << "!" << endl;
+}
+
     void printInfo() {
     cout << "Input Layer: " << input.nodes.size() << " nodes" << endl;
     for(int i = 0; i < hidden.size(); i++) {
@@ -377,7 +459,7 @@ Network create_NN(){
 
 int main()
 {
-    Network nn = Network({2,5,4,5,2});
+    Network nn = Network({2,2});
 
     nn.feedForward();
 
