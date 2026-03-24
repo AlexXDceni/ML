@@ -53,25 +53,25 @@ class Network
             switch (activation_func)
             {
             case 0:
-                SIGMOID(value);
+                return SIGMOID(value);
                 break;
             case 1:
-                RELU(value);
+                return RELU(value);
                 break;
             case 2:
-                Leaky_RELU(value);
+                return Leaky_RELU(value);
                 break;
             case 3:
-                LINEAR(value);
+                return LINEAR(value);
                 break;
             case 4:
-                TANH(value);
+                return TANH(value);
                 break;
             case 5:
-                ELU(value);
+                return ELU(value);
                 break;
             default:
-                SIGMOID(value);
+                return SIGMOID(value);
                 break;
             }
         }
