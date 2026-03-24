@@ -15,7 +15,16 @@ int main()
     int input = 1;
     int output = 1;
 
-    Network nn = Network({input, 8, output}); // W*H, 16, 32, 16, 10
+    int activation_func = 0;
+
+    // 0 - SIGMOID  <- By default if no param passed through
+    // 1 - RELU
+    // 2 - LEAKY_RELU
+    // 3 - LINEAR
+    // 4 - TANH
+    // 5 - ELU
+
+    Network nn = Network( { input , 8 , output } , activation_func ); // W*H, 16, 32, 16, 10
     Network::TrainingData data = nn.loadData(input, output);
 
     // TrainingData data;
@@ -29,6 +38,7 @@ int main()
     {
 
     case 0: // Learn
+
         nn.evolve(4000, 20, 0.05, data);
         for (int i = 0; i < data.inputs.size(); ++i)
         {
@@ -39,6 +49,7 @@ int main()
         break;
 
     case 1: // Predict
+
         nn.loadModal(SAVE_FILE);
         // nn.displayFullNetwork(data.targets[0]);
         for (int i = 0; i < data.inputs.size(); i++)
