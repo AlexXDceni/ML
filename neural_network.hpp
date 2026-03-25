@@ -7,8 +7,8 @@
 #include <string>
 using namespace std;
 
-string INPUT_FILE = "i\\o/ml.in";
-string TARGET_FILE = "i\\o/targets.in";
+string INPUT_FILE = "IO/ml.in";
+string TARGET_FILE = "IO/targets.in";
 
 double BIAS = 0.01;
 
