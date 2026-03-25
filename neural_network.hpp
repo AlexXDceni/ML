@@ -448,8 +448,47 @@ class Network
                 cerr << "Error: " << filename << " size mismatch. Got " << pixels.size() << " values, expected 784." << endl;
             }
         }
-        void mnistPhotosFile(string filename){
+        int reverseInt(int i) {
+            unsigned char c1, c2, c3, c4;
+            c1 = i & 255; c2 = (i >> 8) & 255; c3 = (i >> 16) & 255; c4 = (i >> 24) & 255;
+            return ((int)c1 << 24) + ((int)c2 << 16) + ((int)c3 << 8) + c4;
+        }
+        void loadMnist(string image_path, string label_path, Network::TrainingData &data) {
+            ifstream img_file(image_path, ios::binary);
+            ifstream lbl_file(label_path, ios::binary);
 
+            if (!img_file.is_open() || !lbl_file.is_open()) return;
+
+            int magic, num_items, rows, cols, magic_lbl, num_lbls;
+            
+            img_file.read((char*)&magic, 4);
+            img_file.read((char*)&num_items, 4);
+            img_file.read((char*)&rows, 4);
+            img_file.read((char*)&cols, 4);
+            
+            lbl_file.read((char*)&magic_lbl, 4);
+            lbl_file.read((char*)&num_lbls, 4);
+
+            num_items = reverseInt(num_items);
+            rows = reverseInt(rows);
+            cols = reverseInt(cols);
+            num_lbls = reverseInt(num_lbls);
+
+            for (int i = 0; i < num_items; ++i) {
+                vector<double> pixels;
+                for (int p = 0; p < rows * cols; ++p) {
+                    unsigned char temp = 0;
+                    img_file.read((char*)&temp, 1);
+                    pixels.push_back((double)temp / 255.0);
+                }
+                data.inputs.push_back(pixels);
+
+                unsigned char label = 0;
+                lbl_file.read((char*)&label, 1);
+                vector<double> target(10, 0.0);
+                target[(int)label] = 1.0;
+                data.targets.push_back(target);
+            }
         }
 
 

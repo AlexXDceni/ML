@@ -7,7 +7,7 @@ using namespace std;
 int main()
 {
 
-    string SAVE_FILE = "tests/images.txt";
+    string SAVE_FILE = "tests/mnist.txt";
  
     int W = 28;  // for images
     int H = 28;
@@ -24,27 +24,31 @@ int main()
     // 4 - TANH
     // 5 - ELU
 
-    Network nn = Network( { input , 16 , 32 , 16 , output } , activation_func ); // W*H     , 16 , 32 , 16 ,      10  // for images
+    Network nn = Network( { input , 128 , output } , activation_func ); // W*H     , 16 , 32 , 16 ,      10  // for images
     // Network::TrainingData data = nn.loadData(input, output); // comment for images
     
     Network::TrainingData data; // for images
-    nn.addPhotoToTraining("images/img_3.ppm", 9, data);
-    nn.addPhotoToTraining("images/img_1.ppm", 2, data);
-    nn.addPhotoToTraining("images/img_2.ppm", 0, data);
+    // nn.addPhotoToTraining("images/img_3.ppm", 9, data);
+    // nn.addPhotoToTraining("images/img_1.ppm", 2, data);
+    // nn.addPhotoToTraining("images/img_2.ppm", 0, data);
 
-    bool task = 1;
+    nn.loadMnist("train-images-idx3-ubyte", "train-labels-idx1-ubyte", data);
 
-    switch (task)
+    bool task = 0;
+
+    switch (task)                                                   // make separat functions and task cases for every type  , a =nd way to use  args for cli use
     {
 
     case 0: // Learn
 
-        nn.evolve(4000, 20, 0.05, data);
-        for (int i = 0; i < data.inputs.size(); ++i)
-        {
-            nn.feedForward(data.inputs[i]);
-            nn.printResults();
-        }
+        nn.evolve(100, 20, 0.02, data);
+
+        // for (int i = 0; i < data.inputs.size(); ++i)
+        // {
+        //     nn.feedForward(data.inputs[i]);
+        //     nn.printResults();
+        // }
+
         nn.saveModal(SAVE_FILE);
         break;
 
@@ -53,7 +57,7 @@ int main()
         nn.loadModal(SAVE_FILE);
         // nn.displayFullNetwork(data.targets[0]);
 
-        for (int i = 0; i < data.inputs.size(); i++)
+        for (int i = 0; i < 20; i++)
         {
             double prediction = nn.predictBiggest(data.inputs[i]);  //  <- for ppm images
             //vector<double> prediction = nn.predict(data.inputs[i]);   // for normal data
