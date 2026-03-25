@@ -7,8 +7,8 @@
 #include <string>
 using namespace std;
 
-string INPUT_FILE = "ml.in";
-string TARGET_FILE = "targets.in";
+string INPUT_FILE = "i\\o/ml.in";
+string TARGET_FILE = "i\\o/targets.in";
 
 double BIAS = 0.01;
 
@@ -375,7 +375,7 @@ class Network
             cout << "Neural modal loaded from: " << filename << "!" << endl;
         }
 
-        void addPhotoToTraining(string filename, double target, TrainingData &data){ // Need to remake with on my on
+        void addPhotoToTraining(string filename, double target, TrainingData &data){ // Need to remake with on my own
             ifstream file(filename, ios::binary);
             if (!file.is_open())
             {
@@ -448,6 +448,10 @@ class Network
                 cerr << "Error: " << filename << " size mismatch. Got " << pixels.size() << " values, expected 784." << endl;
             }
         }
+        void mnistPhotosFile(string filename){
+
+        }
+
 
         // Display
 
@@ -696,17 +700,9 @@ class Network
                 double tmp = data.targets[0][i] - output.nodes[i].value;
                 output_error += tmp * tmp;
             }
-            output_error /= output.nodes.size();
+            output_error /= 2;
 
-            // Bin Cross Entropy
 
-            // for( int i = 0 ;i < output.nodes.size(); ++i ){
-
-            //     double actual_log =  output.nodes[i].value * log10( data.targets[0][1] );
-            //     double target_log =  (1 - output.nodes[i].value ) * log10( 1 - data.targets[0][1] );
-            //     output_error += actual_log + target_log;
-            // }
-            // output_error /= -output.nodes.size();
         }
 
         // Predict
