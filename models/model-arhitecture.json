@@ -1,0 +1,32 @@
+{
+    "model_name": "NN",
+    "metadata": {
+        "model_version": "0.1alpha",
+        "author": "Alex",
+        "creation_timestamp": "2024-06-01T12:00:00Z",
+        "timestamp": "2024-06-01T12:00:00Z",
+        "description": "A simple feedforward neural network for classification tasks."
+    },
+    "architecture": {
+        "input_layer": 784,
+        "hidden_layers": [128],
+        "output_layer": 10,
+        "activation_function": "sigmoid"
+    },
+    "params": {
+        "input_layer": {
+            "weights": []
+        },
+        "hidden_layer_0": {
+            "weights": [],
+            "bias": []
+        },
+        "hidden_layer_1": {
+            "weights": [],
+            "bias": []
+        },
+        "output_layer": {
+            "bias": []
+        }
+    }
+}
