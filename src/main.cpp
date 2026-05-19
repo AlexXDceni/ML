@@ -1,45 +1,23 @@
 #include <iostream>
 #include <string>
-#include <iomanip>
 #include "neural_network.hpp"
-#include <fstream>
 // #include <nlohmann/json.json>
 
 using namespace std;
 
 int main( int argc , char* argv[] )
 {
+
+    // TODOS
+
+    // 1. Refactor the code to make it my own 
+    // 2. Add checkpoint system to save intermediate models during training, and also add option to load specific checkpoint for continued training or evaluation.
+    // 3. Implement a more efficient training algorithm, such as mini-batch gradient descent or Adam optimizer, to speed up the learning process and improve convergence.
     
-                        // TODOS
-
-        // 1. Refactor the code to make it my own 
-        // 2. Add checkpoint system to save intermediate models during training, and also add option to load specific checkpoint for continued training or evaluation.
-        // 3. Add encoder, decoder, tokenizer     
-        // 4. Implement a more efficient training algorithm, such as mini-batch gradient descent or Adam optimizer, to speed up the learning process and improve convergence.
-
-
-    const string model_name = "mnist_model";
-    const string SAVE_FILE = "../models/" + model_name + ".json";
-    const string INPUT_FILE = "../data/io/inputs.in";
-    const string TARGET_FILE = "../data/io/targets.in";
-    const string MINST_INPUTS_FILE = "../data/mnist/train-images.idx3-ubyte";
-    const string MINST_LABELS_FILE = "../data/mnist/train-labels.idx1-ubyte";
-
-    // For MNIST dataset
-    const int W = 28; 
-    const int H = 28;
-
     // NN architecture
     const int INPUT = 3;
     const int OUTPUT = 1;
-
-    // Training parameters
-    const int epochs = 500;
-    const double learning_rate = 0.05;
-    const int task = 2;             
-    // 0 - Learn
-    // 1 - Predict
-    // 2 - Test mnist
+    
     const string activation_func = "sigmoid";
     // sigmoid  <- By default if no param passsed through
     // relu
@@ -47,37 +25,69 @@ int main( int argc , char* argv[] )
     // linear 
     // tanh 
     // elu 
+    
+    // Model metadata
+    const string model_name = "TestModel";
+    const string model_version = "1.0.0";
+    const string author = "Alex";
+    const string creation_timestamp = "2024-06-01 12:00:00";
+    
+    // Files
+    const string SAVE_FILE = "../models/" + model_name + ".json";
+    const string INPUT_FILE = "../data/io/inputs.in";
+    const string TARGET_FILE = "../data/io/targets.in";
+    const string MINST_INPUTS_FILE = "../data/mnist/train-images.idx3-ubyte";
+    const string MINST_LABELS_FILE = "../data/mnist/train-labels.idx1-ubyte";
 
+    // Training parameters
+    const int epochs = 50000;
+    const double learning_rate = 0.05;
+    const int task = 0;             
+    // 0 - Create
+    // 1 - Learn
+    // 2 - Predict
+    // 3 - Test mnist
 
 
     switch (task)   
     {
-
-    case 0: // Learn
+    
+    case 0: // Create
         {   
-            Network nn = Network( nn.get_sizes(SAVE_FILE) );    
-            Network::TrainingData data;
+
+            Network nn = Network( {INPUT, 5, 5, OUTPUT}, activation_func );  
+
+            nn.model_name = model_name;
+            nn.meta.model_version = model_version;
+            nn.meta.author = author;
+            nn.meta.creation_timestamp = creation_timestamp; 
+
+            nn.save_modal(SAVE_FILE);
+        
+            break; 
+        }
+
+    case 1: // Learn
+        {   
+            Network nn = Network( nn.get_sizes(SAVE_FILE) );  
 
             nn.load_modal(SAVE_FILE);
+            nn.loadData(INPUT, OUTPUT, INPUT_FILE, TARGET_FILE);
     
-    
-            data = nn.loadData(INPUT, OUTPUT, INPUT_FILE, TARGET_FILE);
-    
-      
-            nn.backpropagate(data, learning_rate, epochs); 
+            nn.backpropagate(learning_rate, epochs); 
     
             nn.save_modal(SAVE_FILE);
             break;
         }
 
-    case 1: // Predict
+    case 2: // Predict
         {
             Network nn = Network( nn.get_sizes(SAVE_FILE) );    
             Network::TrainingData data;
             
             nn.load_modal(SAVE_FILE);
             
-            data = nn.loadData(INPUT, OUTPUT, INPUT_FILE, TARGET_FILE);
+            nn.loadData(INPUT, OUTPUT, INPUT_FILE, TARGET_FILE);
     
             for (int i = 0; i < data.inputs.size(); i++)
             {
@@ -99,13 +109,11 @@ int main( int argc , char* argv[] )
         }
 
 
-    case 2: 
+    case 3: // Test mnist
         {
             Network nn = Network( nn.get_sizes(SAVE_FILE) );    
 
-            cout << "Loading model from " << SAVE_FILE << "..." <<endl;
             nn.load_modal(SAVE_FILE);
-            cout << "Model loaded successfully!" << endl;
 
             const int max_samples = 1000; 
             const int tests_number = 1000;

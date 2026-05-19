@@ -10,7 +10,6 @@
     "metadata": {
         "author": "Alex",
         "creation_timestamp": "2026-05-19T00:00:00Z",
-        "description": "MNIST digit classifier model with one hidden layer of 128 units.",
         "model_version": "1.0.0",
         "timestamp": "2026-05-19T00:00:00Z"
     },

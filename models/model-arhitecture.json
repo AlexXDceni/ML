@@ -4,8 +4,7 @@
         "model_version": "0.1alpha",
         "author": "Alex",
         "creation_timestamp": "2024-06-01T12:00:00Z",
-        "timestamp": "2024-06-01T12:00:00Z",
-        "description": "A simple feedforward neural network for classification tasks."
+        "timestamp": "2024-06-01T12:00:00Z"
     },
     "architecture": {
         "input_layer": 784,

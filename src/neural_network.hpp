@@ -10,8 +10,6 @@ using namespace std;
 using json = nlohmann::json;
 
 
-double BIAS = 0.01;
-
 double get_random()
 {
     static mt19937 gen(random_device{}());
@@ -22,52 +20,26 @@ class Network
 {
     public:
     
-        // Activation functions
+        // Activation function
 
-        double LINEAR(double value)
+        double ACTIVATION(double value, string activation_func, double alpha = 1.0)
         {
-            return value;
-        }
-        double RELU(double value)
-        {
-            return (value > 0) ? value : 0;
-        }
-        double Leaky_RELU(double value)
-        {
-            return (value > 0) ? value : 0.01 * value;
-        }
-        double SIGMOID(double value)
-        {
-            return 1.0 / (1.0 + exp(-value));
-        }
-        double TANH(double value)
-        {
-            return tanh(value);
-        }
-        double ELU(double value, double alpha = 1.0)
-        {
-            return (value > 0) ? value : alpha * (exp(value) - 1);
-        }
-        
-        double ACTIVATION(double value, string activation_func)
-        {
-
+            
             if (activation_func == "sigmoid")
-                return SIGMOID(value);
+                return 1.0 / (1.0 + exp(-value));
             if (activation_func == "relu")
-                return RELU(value);
+                return (value > 0) ? value : 0;
             if (activation_func == "leaky_relu")
-                return Leaky_RELU(value);
+                return (value > 0) ? value : 0.01 * value;
             if (activation_func == "tanh")
-                return TANH(value);
+                return tanh(value);
             if (activation_func == "elu")
-                return ELU(value);
+                return (value > 0) ? value : alpha * (exp(value) - 1);
             if (activation_func == "linear")
-                return LINEAR(value);
+                return value;
 
-
-
-            return SIGMOID(value);
+            cerr << "Warning: Unknown activation function '" << activation_func << "'. Defaulting to sigmoid." << endl;
+            return 1.0 / (1.0 + exp(-value));
         }
         double GET_DERIVATIVE(double value, string activation_func) {
 
@@ -84,9 +56,11 @@ class Network
             if (activation_func == "linear")
                 return 1.0;
 
+            cerr << "Warning: Unknown activation function '" << activation_func << "'. Defaulting to sigmoid derivative." << endl;
             return value * (1.0 - value);
         }
                 
+        // Layers
 
         class Input_Node
         {
@@ -127,7 +101,7 @@ class Network
             Hidden_Node(int numNodesNextLayer)
             {
                 value = 0;
-                bias = BIAS;
+                bias = 0;
                 for (int i = 0; i < numNodesNextLayer; ++i)
                 {
                     weights.push_back(get_random());
@@ -157,7 +131,7 @@ class Network
             Output_Node()
             {
                 value = 0;
-                bias = BIAS;
+                bias = 0;
             }
         };
         class Output_Layer
@@ -175,17 +149,25 @@ class Network
             }
         };
         
+        // Data
+
+        struct TrainingData
+        {
+            vector<vector<double>> inputs;
+            vector<vector<double>> targets;
+        };
         struct metadata {
             string model_version;
             string author;
             string creation_timestamp;
             string timestamp;
-            string description;
         };
 
         metadata meta;
         string model_name;
         
+        TrainingData data;
+
         vector<int> sizes;
         int input_nodes;
         vector<int> hidden_layers;
@@ -195,7 +177,6 @@ class Network
         Input_Layer input;
         vector<Hidden_Layer> hidden;
         Output_Layer output;
-
 
         // Constructor
 
@@ -214,7 +195,6 @@ class Network
             activation_func = sizes.second;
             init();
         }
-        
         void init()
         {
             if (sizes.size() < 2)
@@ -236,102 +216,12 @@ class Network
             output = Output_Layer(output_nodes);
         }
 
-        // Data
-
-        struct TrainingData
-        {
-            vector<vector<double>> inputs;
-            vector<vector<double>> targets;
-        };
-        TrainingData loadData(int inNodes, int outNodes, string inputFile, string targetFile)
-        {
-            TrainingData data;
-            ifstream DIin(inputFile);
-            ifstream DTin(targetFile);
-
-            if (!DIin.is_open() || !DTin.is_open())
-            {
-                cerr << "Error: Could not open " << inputFile << " or " << targetFile << endl;
-                return {};
-            }
-
-            double val;
-            while (DIin >> val)
-            {
-                vector<double> row;
-                row.push_back(val);
-                for (int i = 1; i < inNodes; ++i)
-                {
-                    if (DIin >> val)
-                        row.push_back(val);
-                }
-                if (row.size() == inNodes)
-                {
-                    data.inputs.push_back(row);
-                }
-            }
-
-            while (DTin >> val)
-            {
-                vector<double> row;
-                row.push_back(val);
-                for (int i = 1; i < outNodes; ++i)
-                {
-                    if (DTin >> val)
-                        row.push_back(val);
-                }
-                if (row.size() == outNodes)
-                {
-                    data.targets.push_back(row);
-                }
-            }
-
-            if (data.inputs.empty())
-            {
-                cerr << "Error: No data loaded from files." << endl;
-                return {};
-            }
-
-            if (data.inputs.size() != data.targets.size())
-            {
-                cerr << "Error: Mismatch! Inputs: " << data.inputs.size()
-                    << " | Targets: " << data.targets.size() << endl;
-                return {};
-            }
-
-            return data;
-        }
-
         // Save/Load
 
-        pair<vector<int>, string> get_sizes(string filename){
-            
-            ifstream file(filename);
-
-            if (!file.is_open()) {
-                cerr << "Error: Load file not found" << endl;
-                return {{}, ""};
-            }
-
-            json config;
-            file >> config;
-            file.close();
-
-            vector<int> saved_sizes;
-            saved_sizes.push_back(config["architecture"]["input_layer"]);
-        
-            vector<int> hidden_layers = config["architecture"]["hidden_layers"];
-            for (int h_size : hidden_layers) {
-                saved_sizes.push_back(h_size);
-            }
-
-            saved_sizes.push_back(config["architecture"]["output_layer"]);
-            
-            string activation_func = config["architecture"]["activation_function"];
-
-            return {saved_sizes, activation_func};
-        }
         void load_modal(string filename){
+
+            cout << "Loading model from " << filename << "..." <<endl;
+
             ifstream file(filename);
 
             if (!file.is_open()) {
@@ -350,7 +240,6 @@ class Network
             meta.author = config["metadata"]["author"];
             meta.creation_timestamp = config["metadata"]["creation_timestamp"];
             meta.timestamp = config["metadata"]["timestamp"];
-            meta.description = config["metadata"]["description"];
 
 
 
@@ -406,10 +295,11 @@ class Network
                 output.nodes[i].bias = output_biases[i];
             }
         
-            cout << "Neural modal loaded from : " << filename << "!" << endl;
+            cout << "Neural modal loaded successfully!" << endl;
         }
         void save_modal(string filename){
 
+            cout << "Saving model to " << filename << "..." << endl;
             
             ofstream file(filename);
 
@@ -426,7 +316,6 @@ class Network
             config["metadata"]["author"] = meta.author;
             config["metadata"]["creation_timestamp"] = meta.creation_timestamp;
             config["metadata"]["timestamp"] = meta.timestamp;
-            config["metadata"]["description"] = meta.description;
 
             config["architecture"]["input_layer"] = input_nodes;
             config["architecture"]["hidden_layers"] = hidden_layers;
@@ -457,12 +346,99 @@ class Network
 
             file << config.dump(4); 
             file.close();
-            cout << "Model saved to: " << filename << "!" << endl;
+            cout << "Model saved successfully!" << endl;
+        }
+        pair<vector<int>, string> get_sizes(string filename){
+            
+            ifstream file(filename);
+
+            if (!file.is_open()) {
+                cerr << "Error: Load file not found" << endl;
+                return {{}, ""};
+            }
+
+            json config;
+            file >> config;
+            file.close();
+
+            vector<int> saved_sizes;
+            saved_sizes.push_back(config["architecture"]["input_layer"]);
+        
+            vector<int> hidden_layers = config["architecture"]["hidden_layers"];
+            for (int h_size : hidden_layers) {
+                saved_sizes.push_back(h_size);
+            }
+
+            saved_sizes.push_back(config["architecture"]["output_layer"]);
+            
+            string activation_func = config["architecture"]["activation_function"];
+
+            return {saved_sizes, activation_func};
+        }
+        void loadData(int inNodes, int outNodes, string inputFile, string targetFile)
+        {   
+
+            cout << "Loading data from " << inputFile << " and " << targetFile << "..." << endl;
+            ifstream DIin(inputFile);
+            ifstream DTin(targetFile);
+
+            if (!DIin.is_open() || !DTin.is_open())
+            {
+                cerr << "Error: Could not open " << inputFile << " or " << targetFile << endl;
+                return;
+            }
+
+            double val;
+            while (DIin >> val)
+            {
+                vector<double> row;
+                row.push_back(val);
+                for (int i = 1; i < inNodes; ++i)
+                {
+                    if (DIin >> val)
+                        row.push_back(val);
+                }
+                if (row.size() == inNodes)
+                {
+                    data.inputs.push_back(row);
+                }
+            }
+
+            while (DTin >> val)
+            {
+                vector<double> row;
+                row.push_back(val);
+                for (int i = 1; i < outNodes; ++i)
+                {
+                    if (DTin >> val)
+                        row.push_back(val);
+                }
+                if (row.size() == outNodes)
+                {
+                    data.targets.push_back(row);
+                }
+            }
+
+            if (data.inputs.empty())
+            {
+                cerr << "Error: No data loaded from files." << endl;
+                return;
+            }
+
+            if (data.inputs.size() != data.targets.size())
+            {
+                cerr << "Error: Mismatch! Inputs: " << data.inputs.size()
+                    << " | Targets: " << data.targets.size() << endl;
+                return;
+            }
+
+            cout << "Data loaded successfully!" << endl;
+
         }
 
         // Photos
 
-        void addPhotoToTraining(string filename, double target, TrainingData &data){ // Need to remake with on my own
+        void addPhotoToTraining(string filename, double target){ // Need to remake with on my own
             ifstream file(filename, ios::binary);
             if (!file.is_open())
             {
@@ -540,7 +516,11 @@ class Network
             c1 = i & 255; c2 = (i >> 8) & 255; c3 = (i >> 16) & 255; c4 = (i >> 24) & 255;
             return ((int)c1 << 24) + ((int)c2 << 16) + ((int)c3 << 8) + c4;
         }
-        void loadMnist(string image_path, string label_path, Network::TrainingData &data, int max_samples = -1) {
+        void loadMnist(string image_path, string label_path, int max_samples = -1) {
+
+            
+            cout << "Loading MNIST dataset..." << endl;
+
             ifstream img_file(image_path, ios::binary);
             ifstream lbl_file(label_path, ios::binary);
 
@@ -583,6 +563,8 @@ class Network
                 target[(int)label] = 1.0;
                 data.targets.push_back(target);
             }
+
+            cout<< "MNIST dataset loaded." << endl; 
         }
         void displayMnistImage(const vector<double> &pixels, int width = 28, int height = 28) {
             cout << "\nMNIST Image (ID-based):" << endl;
@@ -603,7 +585,7 @@ class Network
                 cout << endl;
             }
         }
-        void displayMnistImageById(const TrainingData &data, int imageId) {
+        void displayMnistImageById(int imageId) {
             if (imageId < 0 || imageId >= data.inputs.size()) {
                 cerr << "Error: Image ID " << imageId << " out of range. Available: 0-" << (data.inputs.size() - 1) << endl;
                 return;
@@ -621,11 +603,9 @@ class Network
         }
         void MnistTest(string input_file, string target_file, int max_samples, int tests_number) {
             
-            TrainingData data;
-
-            cout << "Loading MNIST dataset..." << endl;
-            loadMnist(input_file, target_file, data, max_samples);
-            cout<< "MNIST dataset loaded. Training samples: " << (data.inputs.size() < max_samples ? data.inputs.size() : max_samples) << endl;
+            
+            loadMnist(input_file, target_file, max_samples);
+            cout<< "Training samples: " << (data.inputs.size() < max_samples ? data.inputs.size() : max_samples) << endl;
     
     
             cout << "Testing on " << tests_number << " samples..." << endl;
@@ -672,35 +652,6 @@ class Network
             cout << "Total correct: " << correctPredictions << "/" << tests_number << endl;
             cout << "Accuracy: " << accuracy << "%" << endl;
             cout << "-----------------------------" << endl;
-        }
-
-        // Calculate
-
-        double calculateCost(const vector<double> &targets)
-        {
-            if (targets.size() != output.nodes.size())
-            {
-                return -1;
-            }
-
-            double totalError = 0;
-            for (int i = 0; i < output.nodes.size(); ++i)
-            {
-                double error = targets[i] - output.nodes[i].value;
-                totalError += error * error;
-            }
-
-            return totalError / output.nodes.size();
-        }
-        double getAverageLoss(const TrainingData &data)
-        {
-            double totalLoss = 0;
-            for (int i = 0; i < data.inputs.size(); ++i)
-            {
-                this->feedForward(data.inputs[i]);
-                totalLoss += this->calculateCost(data.targets[i]);
-            }
-            return totalLoss / data.inputs.size();
         }
 
         // Predict
@@ -794,7 +745,7 @@ class Network
 
         // Learn
 
-        void backpropagate(const TrainingData &data, double learning_rate, int epochs, int displayInterval = 1) {
+        void backpropagate(double learning_rate, int epochs, int displayInterval = 1) {
             for (int e = 0; e < epochs; ++e) {
                 double total_mse = 0;
 
