@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 #include <iomanip>
-#include "include/neural_network.hpp"
+#include "neural_network.hpp"
 #include <fstream>
 // #include <nlohmann/json.json>
 
