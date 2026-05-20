@@ -12,7 +12,8 @@
         "author": "Alex",
         "creation_timestamp": "2024-06-01 12:00:00",
         "model_version": "1.0.0",
-        "timestamp": " 2024-06-01 12:00:00"
+        "timestamp": " 2024-06-01 12:00:00",
+        "param_count": 0
     },
     "model_name": "TestModel",
     "params": {

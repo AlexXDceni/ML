@@ -4,7 +4,8 @@
         "model_version": "0.1alpha",
         "author": "Alex",
         "creation_timestamp": "2024-06-01T12:00:00Z",
-        "timestamp": "2024-06-01T12:00:00Z"
+        "timestamp": "2024-06-01T12:00:00Z",
+        "param_count": 0
     },
     "architecture": {
         "input_layer": 784,

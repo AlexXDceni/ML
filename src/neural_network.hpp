@@ -157,14 +157,15 @@ class Network
             vector<vector<double>> targets;
         };
         struct metadata {
+            string model_name;
             string model_version;
             string author;
             string creation_timestamp;
             string timestamp;
+            long long param_count;
         };
 
         metadata meta;
-        string model_name;
         
         TrainingData data;
 
@@ -180,19 +181,22 @@ class Network
 
         // Constructor
 
-        Network(vector<int> list, string activationFunc = "sigmoid") : sizes(list)
+        Network(vector<int> list, string activationFunc = "sigmoid", metadata params = {}) : sizes(list)
         {
             activation_func = activationFunc;
+            meta = params;
             init();
         }
-        Network(initializer_list<int> list, string activationFunc = "sigmoid") : sizes(list)
+        Network(initializer_list<int> list, string activationFunc = "sigmoid", metadata params = {}) : sizes(list)
         {
             activation_func = activationFunc;
+            meta = params;
             init();
         }
-        Network(pair<vector<int>, string> sizes) : sizes(sizes.first)
+        Network(tuple<vector<int>, string, metadata> params) : sizes(get<0>(params))
         {
-            activation_func = sizes.second;
+            activation_func = get<1>(params);
+            meta = get<2>(params);
             init();
         }
         void init()
@@ -234,12 +238,13 @@ class Network
             file.close();
 
 
-            model_name = config["model_name"];
+            meta.model_name = config["model_name"];
 
             meta.model_version = config["metadata"]["model_version"];
             meta.author = config["metadata"]["author"];
             meta.creation_timestamp = config["metadata"]["creation_timestamp"];
             meta.timestamp = config["metadata"]["timestamp"];
+            meta.param_count = config["metadata"]["param_count"];
 
 
 
@@ -310,12 +315,19 @@ class Network
 
             json config;
 
-            config["model_name"] = model_name;
+            config["model_name"] = meta.model_name;
 
             config["metadata"]["model_version"] = meta.model_version;
             config["metadata"]["author"] = meta.author;
             config["metadata"]["creation_timestamp"] = meta.creation_timestamp;
             config["metadata"]["timestamp"] = meta.timestamp;
+
+            long long param_count = 0;
+            for (int i = 0; i < sizes.size() - 1; i++) {
+                param_count += (sizes[i]+1)*sizes[i+1]; 
+            }
+
+            config["metadata"]["param_count"] = param_count; 
 
             config["architecture"]["input_layer"] = input_nodes;
             config["architecture"]["hidden_layers"] = hidden_layers;
@@ -330,7 +342,7 @@ class Network
 
             for (int i = 0; i < hidden.size(); i++) {
                 string layer_key = "hidden_layer_" + to_string(i);
-                
+
                 for (int n = 0; n < hidden[i].nodes.size(); n++) {
                     config["params"][layer_key]["bias"][n] = hidden[i].nodes[n].bias;
                     for (int w = 0; w < hidden[i].nodes[n].weights.size(); w++) {
@@ -342,19 +354,20 @@ class Network
             for (int i = 0; i < output.nodes.size(); i++) {
                 config["params"]["output_layer"]["bias"][i] = output.nodes[i].bias;
             }
-
+            
 
             file << config.dump(4); 
             file.close();
             cout << "Model saved successfully!" << endl;
         }
-        pair<vector<int>, string> get_sizes(string filename){
+        tuple<vector<int>, string, metadata> get_params(string filename){
             
             ifstream file(filename);
 
             if (!file.is_open()) {
                 cerr << "Error: Load file not found" << endl;
-                return {{}, ""};
+                return {{}, "", {}};
+                //return make_tuple(vector<int>{}, string{""}, metadata{});
             }
 
             json config;
@@ -373,29 +386,36 @@ class Network
             
             string activation_func = config["architecture"]["activation_function"];
 
-            return {saved_sizes, activation_func};
+            metadata meta_data;
+            meta_data.model_name = config["model_name"];
+            meta_data.model_version = config["metadata"]["model_version"];
+            meta_data.author = config["metadata"]["author"];
+            meta_data.creation_timestamp = config["metadata"]["creation_timestamp"];
+            meta_data.timestamp = config["metadata"]["timestamp"];
+
+            return {saved_sizes, activation_func, meta_data};
         }
         void loadData(int inNodes, int outNodes, string inputFile, string targetFile)
         {   
 
             cout << "Loading data from " << inputFile << " and " << targetFile << "..." << endl;
-            ifstream DIin(inputFile);
-            ifstream DTin(targetFile);
+            ifstream inputs(inputFile);
+            ifstream targets(targetFile);
 
-            if (!DIin.is_open() || !DTin.is_open())
+            if (!inputs.is_open() || !targets.is_open())
             {
                 cerr << "Error: Could not open " << inputFile << " or " << targetFile << endl;
                 return;
             }
 
             double val;
-            while (DIin >> val)
+            while (inputs >> val)
             {
                 vector<double> row;
                 row.push_back(val);
                 for (int i = 1; i < inNodes; ++i)
                 {
-                    if (DIin >> val)
+                    if (inputs >> val)
                         row.push_back(val);
                 }
                 if (row.size() == inNodes)
@@ -404,13 +424,13 @@ class Network
                 }
             }
 
-            while (DTin >> val)
+            while (targets >> val)
             {
                 vector<double> row;
                 row.push_back(val);
                 for (int i = 1; i < outNodes; ++i)
                 {
-                    if (DTin >> val)
+                    if (targets >> val)
                         row.push_back(val);
                 }
                 if (row.size() == outNodes)
@@ -745,7 +765,7 @@ class Network
 
         // Learn
 
-        void backpropagate(double learning_rate, int epochs, int displayInterval = 1) {
+        void backpropagate(double learning_rate, int epochs, int checkpointInterval = 0, int displayInterval = 1) {
             for (int e = 0; e < epochs; ++e) {
                 double total_mse = 0;
 
@@ -812,9 +832,14 @@ class Network
                     }
                 }
 
-                if (e % displayInterval == 0) {
+                if ( displayInterval  > 0 && e % displayInterval == 0) {
                     cout << "Epoch " << e << " | MSE: " << (total_mse / (data.inputs.size() * output.nodes.size())) << endl;
                 }
+
+                if( checkpointInterval > 0 && e % checkpointInterval == 0) {
+                    save_modal("checkpoint_epoch_" + to_string(e) + "+" + meta.model_name + ".json");
+                }
+
             }
         }
         

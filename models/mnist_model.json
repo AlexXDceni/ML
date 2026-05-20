@@ -11,7 +11,8 @@
         "author": "Alex",
         "creation_timestamp": "2026-05-19T00:00:00Z",
         "model_version": "1.0.0",
-        "timestamp": "2026-05-19T00:00:00Z"
+        "timestamp": "2026-05-19T00:00:00Z",
+        "param_count": 101770
     },
     "model_name": "MNIST_Classifier",
     "params": {
