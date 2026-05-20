@@ -5,15 +5,28 @@
 #include <random>
 #include <cmath>
 #include <string>
+#include <iomanip>
+#include <tuple>
+#include <chrono>
+#include <sstream>
 #include "include/json.hpp"
+//#include "include/file_convertor.hpp"
+
 using namespace std;
 using json = nlohmann::json;
+using namespace std::chrono;
 
 
 double get_random()
 {
     static mt19937 gen(random_device{}());
     return uniform_real_distribution<double>{-1, 1}(gen);
+}
+string get_time(){
+    std::time_t time_t_format = std::chrono::system_clock::to_time_t(system_clock::now());
+    std::ostringstream ss;
+    ss << std::put_time(std::localtime(&time_t_format), "%Y-%m-%d %H:%M:%S");
+    return ss.str();
 }
 
 class Network
@@ -320,8 +333,8 @@ class Network
             config["metadata"]["model_version"] = meta.model_version;
             config["metadata"]["author"] = meta.author;
             config["metadata"]["creation_timestamp"] = meta.creation_timestamp;
-            config["metadata"]["timestamp"] = meta.timestamp;
-
+            config["metadata"]["timestamp"] = get_time();
+            
             long long param_count = 0;
             for (int i = 0; i < sizes.size() - 1; i++) {
                 param_count += (sizes[i]+1)*sizes[i+1]; 
@@ -366,8 +379,8 @@ class Network
 
             if (!file.is_open()) {
                 cerr << "Error: Load file not found" << endl;
-                return {{}, "", {}};
-                //return make_tuple(vector<int>{}, string{""}, metadata{});
+                // return {{}, "", {}};
+                return make_tuple(vector<int>{}, string{""}, metadata{});
             }
 
             json config;
@@ -392,6 +405,7 @@ class Network
             meta_data.author = config["metadata"]["author"];
             meta_data.creation_timestamp = config["metadata"]["creation_timestamp"];
             meta_data.timestamp = config["metadata"]["timestamp"];
+            meta_data.param_count = config["metadata"]["param_count"];
 
             return {saved_sizes, activation_func, meta_data};
         }
@@ -836,8 +850,8 @@ class Network
                     cout << "Epoch " << e << " | MSE: " << (total_mse / (data.inputs.size() * output.nodes.size())) << endl;
                 }
 
-                if( checkpointInterval > 0 && e % checkpointInterval == 0) {
-                    save_modal("checkpoint_epoch_" + to_string(e) + "+" + meta.model_name + ".json");
+                if( e != 0 && checkpointInterval > 0 && e % checkpointInterval == 0) {
+                    save_modal("../models/checkpoint_epoch_" + to_string(e) + "+" + meta.model_name + ".json");
                 }
 
             }
@@ -863,6 +877,7 @@ class Network
             }
             return results;
         }
+
         vector<double> predict(const vector<double> &inputValues)
         {
             this->feedForward(inputValues);
@@ -874,6 +889,7 @@ class Network
             }
             return results;
         }
+
         vector<double> predictBiggest(const vector<double> &inputValues)
         {
             this->feedForward(inputValues);
