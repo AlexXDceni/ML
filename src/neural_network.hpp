@@ -1,3 +1,4 @@
+#pragma once
 #include <iostream>
 #include <vector>
 #include <initializer_list>
@@ -9,6 +10,8 @@
 #include <tuple>
 #include <chrono>
 #include <sstream>
+#include <csignal>
+#include <cstdlib>
 #include "include/json.hpp"
 //#include "include/file_convertor.hpp"
 
@@ -280,7 +283,7 @@ class Network
             ofstream file(filename);
 
             if (!file.is_open()) {
-                cerr << "Error opening file for reading." << endl;
+                cerr << "Error opening file for writing." << endl;
                 return;
             }
 
@@ -575,6 +578,7 @@ class Network
                         output_deltas[i] = error * GET_DERIVATIVE(val, activation_func);
                     }
 
+
                     vector<vector<double>> hidden_deltas(hidden.size());
                     for (int k = hidden.size() - 1; k >= 0; --k) {
                         hidden_deltas[k].resize(hidden[k].nodes.size());
@@ -686,7 +690,22 @@ class Network
             return {result};
         }
 
+        // Save on Ctrl + C
 
+        inline static Network* current_instance = nullptr;
+        inline static bool shouldSaveModelOnExit = false;
+        static void signalTrigger(int signum) {
+            std::cout << "\n[Ctrl+C] Signal received. Autosaving model..." << std::endl;
+            if (shouldSaveModelOnExit && current_instance != nullptr) {
+                current_instance->save_modal("autosave_" + current_instance->meta.model_name + ".json");
+            }
+            exit(signum); 
+        }
+        void signalHandler(bool shouldSave = true) {
+            current_instance = this;
+            shouldSaveModelOnExit = shouldSave;
+            signal(SIGINT, Network::signalTrigger);
+        }
 
         // Other functions for specific tasks
 

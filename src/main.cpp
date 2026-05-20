@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include "neural_network.hpp"
-// #include <nlohmann/json.json>
 
 using namespace std;
 
@@ -36,8 +35,9 @@ int main( int argc , char* argv[] )
     const int epochs = 50000;
     const double learning_rate = 0.05;
 
-    const int checkpointInterval = 10;
     const int displayInterval = 1;
+    const bool saveOnInterrupt = true;
+    const int checkpointInterval = -1;
     const int mnist_max_samples = -1;
 
     const int task = 0;             
@@ -81,6 +81,7 @@ int main( int argc , char* argv[] )
     case 2: // Learn
         {   
             Network nn = Network( nn.get_params(SAVE_FILE) );  
+            nn.signalHandler(saveOnInterrupt);
             nn.load_modal(SAVE_FILE);
             nn.loadData(INPUT, OUTPUT, INPUT_FILE, TARGET_FILE);
             nn.backpropagate(learning_rate, epochs, checkpointInterval, displayInterval); 
@@ -119,6 +120,7 @@ int main( int argc , char* argv[] )
         case 5: // Learn mnist
             {
                 Network nn = Network( nn.get_params(SAVE_FILE) );  
+                nn.signalHandler(saveOnInterrupt);
                 nn.load_modal(SAVE_FILE);
                 nn.loadMnist(TRAINING_MINST_INPUTS_FILE, TRAINING_MINST_LABELS_FILE, mnist_max_samples); 
                 nn.backpropagate(learning_rate, epochs, checkpointInterval, displayInterval); 
