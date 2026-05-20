@@ -7,17 +7,6 @@ using namespace std;
 
 int main( int argc , char* argv[] )
 {
-
-    // TODOS
-
-    // 1. Refactor the code to make it my own 
-
-    // 3. Implement a more efficient training algorithm, such as mini-batch gradient descent or Adam optimizer, to speed up the learning process and improve convergence.
-    // 4. Add support for more complex neural network architectures, such as convolutional neural networks (CNNs) for image processing tasks or recurrent neural networks (RNNs) for sequential data.
-    // 5. Implement a more robust evaluation system, including metrics like precision, recall, and F1-score, to better assess the performance of the model on different types of data and tasks.
-    // 6. Add functionality for hyperparameter tuning, allowing users to easily experiment with different learning rates, activation functions, and network architectures to find the best configuration for their specific problem.
-
-    
     // NN architecture
     const int INPUT = 3;
     const int OUTPUT = 1;
@@ -31,7 +20,7 @@ int main( int argc , char* argv[] )
     // elu 
     
     // Model metadata
-    const string model_name = "MNIST_Classifier";
+    const string model_name = "TEST_MODEL";
 
     // Files
     const string SAVE_FILE = "../models/" + model_name + ".json";

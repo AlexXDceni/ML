@@ -33,46 +33,6 @@ class Network
 {
     public:
     
-        // Activation function
-
-        double ACTIVATION(double value, string activation_func, double alpha = 1.0)
-        {
-            
-            if (activation_func == "sigmoid")
-                return 1.0 / (1.0 + exp(-value));
-            if (activation_func == "relu")
-                return (value > 0) ? value : 0;
-            if (activation_func == "leaky_relu")
-                return (value > 0) ? value : 0.01 * value;
-            if (activation_func == "tanh")
-                return tanh(value);
-            if (activation_func == "elu")
-                return (value > 0) ? value : alpha * (exp(value) - 1);
-            if (activation_func == "linear")
-                return value;
-
-            cerr << "Warning: Unknown activation function '" << activation_func << "'. Defaulting to sigmoid." << endl;
-            return 1.0 / (1.0 + exp(-value));
-        }
-        double GET_DERIVATIVE(double value, string activation_func) {
-
-            if (activation_func == "sigmoid")
-                return value * (1.0 - value);
-            if (activation_func == "relu")
-                return (value > 0) ? 1.0 : 0.0;
-            if (activation_func == "leaky_relu")
-                return (value > 0) ? 1.0 : 0.01;
-            if (activation_func == "tanh")
-                return 1.0 - (value * value);
-            if (activation_func == "elu")
-                return (value > 0) ? 1.0 : (value + 1.0);
-            if (activation_func == "linear")
-                return 1.0;
-
-            cerr << "Warning: Unknown activation function '" << activation_func << "'. Defaulting to sigmoid derivative." << endl;
-            return value * (1.0 - value);
-        }
-                
         // Layers
 
         class Input_Node
@@ -179,7 +139,6 @@ class Network
         };
 
         metadata meta;
-        
         TrainingData data;
 
         vector<int> sizes;
@@ -187,7 +146,6 @@ class Network
         vector<int> hidden_layers;
         int output_nodes;
         string activation_func;
-
         Input_Layer input;
         vector<Hidden_Layer> hidden;
         Output_Layer output;
@@ -468,6 +426,46 @@ class Network
 
             cout << "Data loaded successfully!" << endl;
 
+        }
+
+        // Activation function
+
+        double ACTIVATION(double value, string activation_func, double alpha = 1.0)
+        {
+            
+            if (activation_func == "sigmoid")
+                return 1.0 / (1.0 + exp(-value));
+            if (activation_func == "relu")
+                return (value > 0) ? value : 0;
+            if (activation_func == "leaky_relu")
+                return (value > 0) ? value : 0.01 * value;
+            if (activation_func == "tanh")
+                return tanh(value);
+            if (activation_func == "elu")
+                return (value > 0) ? value : alpha * (exp(value) - 1);
+            if (activation_func == "linear")
+                return value;
+
+            cerr << "Warning: Unknown activation function '" << activation_func << "'. Defaulting to sigmoid." << endl;
+            return 1.0 / (1.0 + exp(-value));
+        }
+        double GET_DERIVATIVE(double value, string activation_func) {
+
+            if (activation_func == "sigmoid")
+                return value * (1.0 - value);
+            if (activation_func == "relu")
+                return (value > 0) ? 1.0 : 0.0;
+            if (activation_func == "leaky_relu")
+                return (value > 0) ? 1.0 : 0.01;
+            if (activation_func == "tanh")
+                return 1.0 - (value * value);
+            if (activation_func == "elu")
+                return (value > 0) ? 1.0 : (value + 1.0);
+            if (activation_func == "linear")
+                return 1.0;
+
+            cerr << "Warning: Unknown activation function '" << activation_func << "'. Defaulting to sigmoid derivative." << endl;
+            return value * (1.0 - value);
         }
 
         // Predict
