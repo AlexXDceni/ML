@@ -11,7 +11,6 @@ int main( int argc , char* argv[] )
     // TODOS
 
     // 1. Refactor the code to make it my own 
-    // 2. add model comparation function
 
     // 3. Implement a more efficient training algorithm, such as mini-batch gradient descent or Adam optimizer, to speed up the learning process and improve convergence.
     // 4. Add support for more complex neural network architectures, such as convolutional neural networks (CNNs) for image processing tasks or recurrent neural networks (RNNs) for sequential data.

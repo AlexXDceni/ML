@@ -470,9 +470,229 @@ class Network
 
         }
 
-        // Photos
+        // Predict
 
-        void addPhotoToTraining(string filename, double target){ // Need to remake with on my own
+        void feedZero()
+        {
+
+            for (auto &layer : hidden)
+            {
+                for (auto &node : layer.nodes)
+                {
+                    node.value = 0;
+                }
+            }
+            for (auto &node : output.nodes)
+            {
+                node.value = 0;
+            }
+        }
+        void feedForward(const vector<double> &inputValues)
+        {
+
+            feedZero();
+
+            if (inputValues.size() != input.nodes.size())
+            {
+                cerr << "Error: Input size mismatch!" << endl;
+                return;
+            }
+
+            for (int i = 0; i < input.nodes.size(); ++i)
+            {
+                input.nodes[i].value = inputValues[i];
+            }
+
+            bool areHiddenLayers = (hidden.size() > 0) ? 1 : 0;
+
+            // I-O
+
+            if (!areHiddenLayers)
+            {
+
+                for (int j = 0; j < output.nodes.size(); ++j)
+                {
+                    for (int i = 0; i < input.nodes.size(); ++i)
+                    {
+                        output.nodes[j].value += input.nodes[i].value * input.nodes[i].weights[j];
+                    }
+                    output.nodes[j].value = ACTIVATION(output.nodes[j].value + output.nodes[j].bias, activation_func);
+                }
+            }
+
+            else
+            {
+
+                // I - L1
+
+                for (int j = 0; j < hidden[0].nodes.size(); ++j)
+                {
+                    for (int i = 0; i < input.nodes.size(); ++i)
+                    {
+                        hidden[0].nodes[j].value += input.nodes[i].value * input.nodes[i].weights[j];
+                    }
+                    hidden[0].nodes[j].value = ACTIVATION(hidden[0].nodes[j].value + hidden[0].nodes[j].bias, activation_func);
+                }
+
+                // L1 - Ln
+
+                for (int k = 0; k < hidden.size() - 1; ++k)
+                    for (int j = 0; j < hidden[k + 1].nodes.size(); ++j)
+                    {
+                        for (int i = 0; i < hidden[k].nodes.size(); ++i)
+                        {
+                            hidden[k + 1].nodes[j].value += hidden[k].nodes[i].value * hidden[k].nodes[i].weights[j];
+                        }
+                        hidden[k + 1].nodes[j].value = ACTIVATION(hidden[k + 1].nodes[j].value + hidden[k + 1].nodes[j].bias, activation_func);
+                    }
+
+                // Ln - O
+
+                for (int j = 0; j < output.nodes.size(); ++j)
+                {
+                    for (int i = 0; i < hidden[hidden.size() - 1].nodes.size(); ++i)
+                    {
+                        output.nodes[j].value += hidden[hidden.size() - 1].nodes[i].value * hidden[hidden.size() - 1].nodes[i].weights[j];
+                    }
+                    output.nodes[j].value = ACTIVATION(output.nodes[j].value + output.nodes[j].bias, activation_func);
+                }
+            }
+        }
+
+        // Learn
+
+        void backpropagate(double learning_rate, int epochs, int checkpointInterval = 0, int displayInterval = 1) {
+            for (int e = 0; e < epochs; ++e) {
+                double total_mse = 0;
+
+                for (int d = 0; d < data.inputs.size(); ++d) {
+                    feedForward(data.inputs[d]);
+
+                    vector<double> output_deltas(output.nodes.size());
+                    for (int i = 0; i < output.nodes.size(); ++i) {
+                        double val = output.nodes[i].value;
+                        double error = data.targets[d][i] - val; 
+                        total_mse += error * error;
+                        
+                        output_deltas[i] = error * GET_DERIVATIVE(val, activation_func);
+                    }
+
+                    vector<vector<double>> hidden_deltas(hidden.size());
+                    for (int k = hidden.size() - 1; k >= 0; --k) {
+                        hidden_deltas[k].resize(hidden[k].nodes.size());
+                        
+                        for (int i = 0; i < hidden[k].nodes.size(); ++i) {
+                            double error = 0;
+                            
+                            if (k == hidden.size() - 1) {
+                                for (int j = 0; j < output.nodes.size(); ++j) {
+                                    error += output_deltas[j] * hidden[k].nodes[i].weights[j];
+                                }
+                            } 
+                            else {
+                                for (int j = 0; j < hidden[k+1].nodes.size(); ++j) {
+                                    error += hidden_deltas[k+1][j] * hidden[k].nodes[i].weights[j];
+                                }
+                            }
+                            
+                            double val = hidden[k].nodes[i].value;
+                            hidden_deltas[k][i] = error * GET_DERIVATIVE(val, activation_func);
+                        }
+                    }
+
+
+                    int last_h = hidden.size() - 1;
+                    for (int j = 0; j < output.nodes.size(); ++j) {
+                        output.nodes[j].bias += learning_rate * output_deltas[j];
+                        for (int i = 0; i < hidden[last_h].nodes.size(); ++i) {
+                            hidden[last_h].nodes[i].weights[j] += learning_rate * output_deltas[j] * hidden[last_h].nodes[i].value;
+                        }
+                    }
+
+                    for (int k = last_h; k > 0; --k) {
+                        for (int i = 0; i < hidden[k].nodes.size(); ++i) {
+                            hidden[k].nodes[i].bias += learning_rate * hidden_deltas[k][i];
+                        }
+                        for (int j = 0; j < hidden[k-1].nodes.size(); ++j) {
+                            for (int i = 0; i < hidden[k].nodes.size(); ++i) {
+                                hidden[k-1].nodes[j].weights[i] += learning_rate * hidden_deltas[k][i] * hidden[k-1].nodes[j].value;
+                            }
+                        }
+                    }
+
+                    for (int i = 0; i < hidden[0].nodes.size(); ++i) {
+                        hidden[0].nodes[i].bias += learning_rate * hidden_deltas[0][i];
+                        for (int j = 0; j < input.nodes.size(); ++j) {
+                            input.nodes[j].weights[i] += learning_rate * hidden_deltas[0][i] * input.nodes[j].value;
+                        }
+                    }
+                }
+
+                if ( displayInterval  > 0 && e % displayInterval == 0) {
+                    cout << "Epoch " << e << " | MSE: " << (total_mse / (data.inputs.size() * output.nodes.size())) << endl;
+                }
+
+                if( e != 0 && checkpointInterval > 0 && e % checkpointInterval == 0) {
+                    save_modal("../models/checkpoint_epoch_" + to_string(e) + "+" + meta.model_name + ".json");
+                }
+
+            }
+        }
+        
+        // Predict
+        
+        vector<double> predictWholeNum(const vector<double> &inputValues)
+        {
+            this->feedForward(inputValues);
+            vector<double> results;
+
+            for (auto &node : output.nodes)
+            {
+                if (node.value >= 0.5)
+                {
+                    results.push_back(1);
+                }
+                else
+                {
+                    results.push_back(0);
+                }
+            }
+            return results;
+        }
+        vector<double> predict(const vector<double> &inputValues)
+        {
+            this->feedForward(inputValues);
+            vector<double> results;
+
+            for (auto &node : output.nodes)
+            {
+                results.push_back((node.value > 0.00001) ? node.value : 0);
+            }
+            return results;
+        }
+        vector<double> predictBiggest(const vector<double> &inputValues)
+        {
+            this->feedForward(inputValues);
+
+            double result = 0;
+            double biggest = -1.0;
+
+            for (int i = 0; i < output.nodes.size(); ++i)
+            {
+                if (output.nodes[i].value > biggest)
+                {
+                    biggest = output.nodes[i].value;
+                    result = i;
+                }
+            }
+            return {result};
+        }
+
+
+
+        // Other functions for specific tasks
+
+        void addPhotoToTraining(string filename, double target){ 
             ifstream file(filename, ios::binary);
             if (!file.is_open())
             {
@@ -688,223 +908,4 @@ class Network
             cout << "-----------------------------" << endl;
         }
 
-        // Predict
-
-        void feedZero()
-        {
-
-            for (auto &layer : hidden)
-            {
-                for (auto &node : layer.nodes)
-                {
-                    node.value = 0;
-                }
-            }
-            for (auto &node : output.nodes)
-            {
-                node.value = 0;
-            }
-        }
-        void feedForward(const vector<double> &inputValues)
-        {
-
-            feedZero();
-
-            if (inputValues.size() != input.nodes.size())
-            {
-                cerr << "Error: Input size mismatch!" << endl;
-                return;
-            }
-
-            for (int i = 0; i < input.nodes.size(); ++i)
-            {
-                input.nodes[i].value = inputValues[i];
-            }
-
-            bool areHiddenLayers = (hidden.size() > 0) ? 1 : 0;
-
-            // I-O
-
-            if (!areHiddenLayers)
-            {
-
-                for (int j = 0; j < output.nodes.size(); ++j)
-                {
-                    for (int i = 0; i < input.nodes.size(); ++i)
-                    {
-                        output.nodes[j].value += input.nodes[i].value * input.nodes[i].weights[j];
-                    }
-                    output.nodes[j].value = ACTIVATION(output.nodes[j].value + output.nodes[j].bias, activation_func);
-                }
-            }
-
-            else
-            {
-
-                // I - L1
-
-                for (int j = 0; j < hidden[0].nodes.size(); ++j)
-                {
-                    for (int i = 0; i < input.nodes.size(); ++i)
-                    {
-                        hidden[0].nodes[j].value += input.nodes[i].value * input.nodes[i].weights[j];
-                    }
-                    hidden[0].nodes[j].value = ACTIVATION(hidden[0].nodes[j].value + hidden[0].nodes[j].bias, activation_func);
-                }
-
-                // L1 - Ln
-
-                for (int k = 0; k < hidden.size() - 1; ++k)
-                    for (int j = 0; j < hidden[k + 1].nodes.size(); ++j)
-                    {
-                        for (int i = 0; i < hidden[k].nodes.size(); ++i)
-                        {
-                            hidden[k + 1].nodes[j].value += hidden[k].nodes[i].value * hidden[k].nodes[i].weights[j];
-                        }
-                        hidden[k + 1].nodes[j].value = ACTIVATION(hidden[k + 1].nodes[j].value + hidden[k + 1].nodes[j].bias, activation_func);
-                    }
-
-                // Ln - O
-
-                for (int j = 0; j < output.nodes.size(); ++j)
-                {
-                    for (int i = 0; i < hidden[hidden.size() - 1].nodes.size(); ++i)
-                    {
-                        output.nodes[j].value += hidden[hidden.size() - 1].nodes[i].value * hidden[hidden.size() - 1].nodes[i].weights[j];
-                    }
-                    output.nodes[j].value = ACTIVATION(output.nodes[j].value + output.nodes[j].bias, activation_func);
-                }
-            }
-        }
-
-        // Learn
-
-        void backpropagate(double learning_rate, int epochs, int checkpointInterval = 0, int displayInterval = 1) {
-            for (int e = 0; e < epochs; ++e) {
-                double total_mse = 0;
-
-                for (int d = 0; d < data.inputs.size(); ++d) {
-                    feedForward(data.inputs[d]);
-
-                    vector<double> output_deltas(output.nodes.size());
-                    for (int i = 0; i < output.nodes.size(); ++i) {
-                        double val = output.nodes[i].value;
-                        double error = data.targets[d][i] - val; 
-                        total_mse += error * error;
-                        
-                        output_deltas[i] = error * GET_DERIVATIVE(val, activation_func);
-                    }
-
-                    vector<vector<double>> hidden_deltas(hidden.size());
-                    for (int k = hidden.size() - 1; k >= 0; --k) {
-                        hidden_deltas[k].resize(hidden[k].nodes.size());
-                        
-                        for (int i = 0; i < hidden[k].nodes.size(); ++i) {
-                            double error = 0;
-                            
-                            if (k == hidden.size() - 1) {
-                                for (int j = 0; j < output.nodes.size(); ++j) {
-                                    error += output_deltas[j] * hidden[k].nodes[i].weights[j];
-                                }
-                            } 
-                            else {
-                                for (int j = 0; j < hidden[k+1].nodes.size(); ++j) {
-                                    error += hidden_deltas[k+1][j] * hidden[k].nodes[i].weights[j];
-                                }
-                            }
-                            
-                            double val = hidden[k].nodes[i].value;
-                            hidden_deltas[k][i] = error * GET_DERIVATIVE(val, activation_func);
-                        }
-                    }
-
-
-                    int last_h = hidden.size() - 1;
-                    for (int j = 0; j < output.nodes.size(); ++j) {
-                        output.nodes[j].bias += learning_rate * output_deltas[j];
-                        for (int i = 0; i < hidden[last_h].nodes.size(); ++i) {
-                            hidden[last_h].nodes[i].weights[j] += learning_rate * output_deltas[j] * hidden[last_h].nodes[i].value;
-                        }
-                    }
-
-                    for (int k = last_h; k > 0; --k) {
-                        for (int i = 0; i < hidden[k].nodes.size(); ++i) {
-                            hidden[k].nodes[i].bias += learning_rate * hidden_deltas[k][i];
-                        }
-                        for (int j = 0; j < hidden[k-1].nodes.size(); ++j) {
-                            for (int i = 0; i < hidden[k].nodes.size(); ++i) {
-                                hidden[k-1].nodes[j].weights[i] += learning_rate * hidden_deltas[k][i] * hidden[k-1].nodes[j].value;
-                            }
-                        }
-                    }
-
-                    for (int i = 0; i < hidden[0].nodes.size(); ++i) {
-                        hidden[0].nodes[i].bias += learning_rate * hidden_deltas[0][i];
-                        for (int j = 0; j < input.nodes.size(); ++j) {
-                            input.nodes[j].weights[i] += learning_rate * hidden_deltas[0][i] * input.nodes[j].value;
-                        }
-                    }
-                }
-
-                if ( displayInterval  > 0 && e % displayInterval == 0) {
-                    cout << "Epoch " << e << " | MSE: " << (total_mse / (data.inputs.size() * output.nodes.size())) << endl;
-                }
-
-                if( e != 0 && checkpointInterval > 0 && e % checkpointInterval == 0) {
-                    save_modal("../models/checkpoint_epoch_" + to_string(e) + "+" + meta.model_name + ".json");
-                }
-
-            }
-        }
-        
-        // Predict
-
-        vector<double> predictWholeNum(const vector<double> &inputValues)
-        {
-            this->feedForward(inputValues);
-            vector<double> results;
-
-            for (auto &node : output.nodes)
-            {
-                if (node.value >= 0.5)
-                {
-                    results.push_back(1);
-                }
-                else
-                {
-                    results.push_back(0);
-                }
-            }
-            return results;
-        }
-
-        vector<double> predict(const vector<double> &inputValues)
-        {
-            this->feedForward(inputValues);
-            vector<double> results;
-
-            for (auto &node : output.nodes)
-            {
-                results.push_back((node.value > 0.00001) ? node.value : 0);
-            }
-            return results;
-        }
-
-        vector<double> predictBiggest(const vector<double> &inputValues)
-        {
-            this->feedForward(inputValues);
-
-            double result = 0;
-            double biggest = -1.0;
-
-            for (int i = 0; i < output.nodes.size(); ++i)
-            {
-                if (output.nodes[i].value > biggest)
-                {
-                    biggest = output.nodes[i].value;
-                    result = i;
-                }
-            }
-            return {result};
-        }
 };
