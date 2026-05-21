@@ -32,7 +32,7 @@ string get_time(){
     return ss.str();
 }
 
-class Network
+class NeuralNetwork
 {
     public:
     
@@ -155,19 +155,19 @@ class Network
 
         // Constructor
 
-        Network(vector<int> list, string activationFunc = "sigmoid", metadata params = {}) : sizes(list)
+        NeuralNetwork(vector<int> list, string activationFunc = "sigmoid", metadata params = {}) : sizes(list)
         {
             activation_func = activationFunc;
             meta = params;
             init();
         }
-        Network(initializer_list<int> list, string activationFunc = "sigmoid", metadata params = {}) : sizes(list)
+        NeuralNetwork(initializer_list<int> list, string activationFunc = "sigmoid", metadata params = {}) : sizes(list)
         {
             activation_func = activationFunc;
             meta = params;
             init();
         }
-        Network(tuple<vector<int>, string, metadata> params) : sizes(get<0>(params))
+        NeuralNetwork(tuple<vector<int>, string, metadata> params) : sizes(get<0>(params))
         {
             activation_func = get<1>(params);
             meta = get<2>(params);
@@ -196,7 +196,7 @@ class Network
 
         // Save/Load
 
-        void load_modal(string filename){
+        void load_model(string filename){
 
             cout << "Loading model from " << filename << "..." <<endl;
 
@@ -274,9 +274,9 @@ class Network
                 output.nodes[i].bias = output_biases[i];
             }
         
-            cout << "Neural modal loaded successfully!" << endl;
+            cout << "Neural model loaded successfully!" << endl;
         }
-        void save_modal(string filename){
+        void save_model(string filename){
 
             cout << "Saving model to " << filename << "..." << endl;
             
@@ -635,7 +635,7 @@ class Network
                 }
 
                 if( e != 0 && checkpointInterval > 0 && e % checkpointInterval == 0) {
-                    save_modal("../models/checkpoint_epoch_" + to_string(e) + "+" + meta.model_name + ".json");
+                    save_model("../models/checkpoint_epoch_" + to_string(e) + "+" + meta.model_name + ".json");
                 }
 
             }
@@ -692,19 +692,19 @@ class Network
 
         // Save on Ctrl + C
 
-        inline static Network* current_instance = nullptr;
+        inline static NeuralNetwork* current_instance = nullptr;
         inline static bool shouldSaveModelOnExit = false;
         static void signalTrigger(int signum) {
-            std::cout << "\n[Ctrl+C] Signal received. Autosaving model..." << std::endl;
+            cout << "[Ctrl+C] Signal received. Autosaving model..." << endl;
             if (shouldSaveModelOnExit && current_instance != nullptr) {
-                current_instance->save_modal("autosave_" + current_instance->meta.model_name + ".json");
+                current_instance->save_model("../models/autosave_" + current_instance->meta.model_name + ".json");
             }
             exit(signum); 
         }
         void signalHandler(bool shouldSave = true) {
             current_instance = this;
             shouldSaveModelOnExit = shouldSave;
-            signal(SIGINT, Network::signalTrigger);
+            signal(SIGINT, NeuralNetwork::signalTrigger);
         }
 
         // Other functions for specific tasks

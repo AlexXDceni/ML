@@ -19,7 +19,7 @@ int main( int argc , char* argv[] )
     // elu 
     
     // Model metadata
-    const string model_name = "TEST_MODEL";
+    const string model_name = "test_model";
 
     // Files
     const string SAVE_FILE = "../models/" + model_name + ".json";
@@ -40,7 +40,7 @@ int main( int argc , char* argv[] )
     const int checkpointInterval = -1;
     const int mnist_max_samples = -1;
 
-    const int task = 0;             
+    const int task = -1;             
     // 0 - Create
     // 1 - Change metadata
     // 2 - Learn
@@ -54,46 +54,46 @@ int main( int argc , char* argv[] )
     
     case 0: // Create
         {           
-            Network::metadata meta;
+            NeuralNetwork::metadata meta;
             meta.model_name = model_name;
             meta.model_version = "1.0.0";
             meta.author = "Alex";
             meta.creation_timestamp = get_time();
             meta.timestamp = get_time();
 
-            Network nn = Network( {INPUT, 5, 5, OUTPUT}, activation_func , meta );  
-            nn.save_modal(SAVE_FILE);
+            NeuralNetwork nn = NeuralNetwork( {INPUT, 5, 5, OUTPUT}, activation_func , meta );  
+            nn.save_model(SAVE_FILE);
             break; 
         }
         
         case 1: // Change metadata   
         {
-            Network nn = Network( nn.get_params(SAVE_FILE) );  
-            nn.load_modal(SAVE_FILE);
+            NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );  
+            nn.load_model(SAVE_FILE);
             
             nn.meta.model_version = "1.0.0";
             nn.meta.timestamp = get_time();
     
-            nn.save_modal(SAVE_FILE);
+            nn.save_model(SAVE_FILE);
             break; 
         }
 
     case 2: // Learn
         {   
-            Network nn = Network( nn.get_params(SAVE_FILE) );  
+            NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );  
             nn.signalHandler(saveOnInterrupt);
-            nn.load_modal(SAVE_FILE);
+            nn.load_model(SAVE_FILE);
             nn.loadData(INPUT, OUTPUT, INPUT_FILE, TARGET_FILE);
             nn.backpropagate(learning_rate, epochs, checkpointInterval, displayInterval); 
-            nn.save_modal(SAVE_FILE);
+            nn.save_model(SAVE_FILE);
             break;
         }
 
     case 3: // Predict
         {
-            Network nn = Network( nn.get_params(SAVE_FILE) );    
-            Network::TrainingData data;
-            nn.load_modal(SAVE_FILE);
+            NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );    
+            NeuralNetwork::TrainingData data;
+            nn.load_model(SAVE_FILE);
             nn.loadData(INPUT, OUTPUT, INPUT_FILE, TARGET_FILE);
 
             for (int i = 0; i < data.inputs.size(); i++)
@@ -110,8 +110,8 @@ int main( int argc , char* argv[] )
 
         case 4: // Test mnist
             {
-                Network nn = Network( nn.get_params(SAVE_FILE) );
-                nn.load_modal(SAVE_FILE);
+                NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );
+                nn.load_model(SAVE_FILE);
                 const int max_samples = 1000; 
                 const int tests_number = 1000;
                 nn.MnistTest(MINST_INPUTS_FILE, MINST_LABELS_FILE, max_samples, tests_number);
@@ -119,12 +119,12 @@ int main( int argc , char* argv[] )
             }
         case 5: // Learn mnist
             {
-                Network nn = Network( nn.get_params(SAVE_FILE) );  
+                NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );  
                 nn.signalHandler(saveOnInterrupt);
-                nn.load_modal(SAVE_FILE);
+                nn.load_model(SAVE_FILE);
                 nn.loadMnist(TRAINING_MINST_INPUTS_FILE, TRAINING_MINST_LABELS_FILE, mnist_max_samples); 
                 nn.backpropagate(learning_rate, epochs, checkpointInterval, displayInterval); 
-                nn.save_modal(SAVE_FILE);
+                nn.save_model(SAVE_FILE);
                 break;
             }
     }   
