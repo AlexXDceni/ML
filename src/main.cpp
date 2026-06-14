@@ -127,6 +127,11 @@ int main( int argc , char* argv[] )
                 nn.save_model(SAVE_FILE);
                 break;
             }
+        default:
+            {
+            cout<<"No test case selected, change task value.";
+            break;
+            }
     }   
     return 0;
 }
