@@ -43,3 +43,6 @@
 Folders
 .vscode/*
 checkpoint*/**/*.json
+build/*
+src/gui/*
+imgui.ini

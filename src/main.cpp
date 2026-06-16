@@ -91,7 +91,7 @@ int main( int argc , char* argv[] )
             NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );  
             nn.signalHandler(saveOnInterrupt);
             nn.load_model(SAVE_FILE);
-            nn.loadData(INPUT, OUTPUT, INPUT_FILE, TARGET_FILE);
+            nn.loadData(INPUT_FILE, TARGET_FILE);
             nn.backpropagate(learning_rate, epochs, checkpointInterval, displayInterval); 
             nn.save_model(SAVE_FILE);
             break;
@@ -100,15 +100,14 @@ int main( int argc , char* argv[] )
     case 3: // Predict
         {
             NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );    
-            NeuralNetwork::TrainingData data;
             nn.load_model(SAVE_FILE);
-            nn.loadData(INPUT, OUTPUT, INPUT_FILE, TARGET_FILE);
+            nn.loadData(INPUT_FILE, TARGET_FILE);
 
-            for (int i = 0; i < data.inputs.size(); i++)
+            for (int i = 0; i < nn.data.inputs.size(); i++)
             {
-                vector<double> prediction =  nn.predict(data.inputs[i]); 
+                vector<double> prediction =  nn.predict(nn.data.inputs[i]); 
                 cout << "Input " << i << ": ";
-                for (double val : data.inputs[i]) 
+                for (double val : nn.data.inputs[i]) 
                     cout << val << " ";
                 cout << "-> AI says: " << prediction[0] << endl;
             }

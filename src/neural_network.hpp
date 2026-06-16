@@ -12,6 +12,7 @@
 #include <sstream>
 #include <csignal>
 #include <cstdlib>
+
 #include "include/json.hpp"
 //#include "include/file_convertor.hpp"
 
@@ -22,10 +23,11 @@ using namespace std::chrono;
 
 double get_random()
 {
-    static mt19937 gen(random_device{}());
+    thread_local mt19937 gen(random_device{}());
     return uniform_real_distribution<double>{-1, 1}(gen);
 }
-string get_time(){
+string get_time()
+{
     std::time_t time_t_format = std::chrono::system_clock::to_time_t(system_clock::now());
     std::ostringstream ss;
     ss << std::put_time(std::localtime(&time_t_format), "%Y-%m-%d %H:%M:%S");
@@ -370,7 +372,7 @@ class NeuralNetwork
 
             return {saved_sizes, activation_func, meta_data};
         }
-        void loadData(int inNodes, int outNodes, string inputFile, string targetFile)
+        void loadData(string inputFile, string targetFile)
         {   
 
             cout << "Loading data from " << inputFile << " and " << targetFile << "..." << endl;
@@ -388,12 +390,12 @@ class NeuralNetwork
             {
                 vector<double> row;
                 row.push_back(val);
-                for (int i = 1; i < inNodes; ++i)
+                for (int i = 1; i < input_nodes; ++i)
                 {
                     if (inputs >> val)
                         row.push_back(val);
                 }
-                if (row.size() == inNodes)
+                if (row.size() == input_nodes)
                 {
                     data.inputs.push_back(row);
                 }
@@ -403,12 +405,12 @@ class NeuralNetwork
             {
                 vector<double> row;
                 row.push_back(val);
-                for (int i = 1; i < outNodes; ++i)
+                for (int i = 1; i < output_nodes; ++i)
                 {
                     if (targets >> val)
                         row.push_back(val);
                 }
-                if (row.size() == outNodes)
+                if (row.size() == output_nodes)
                 {
                     data.targets.push_back(row);
                 }
@@ -663,6 +665,10 @@ class NeuralNetwork
         }
         vector<double> predict(const vector<double> &inputValues)
         {
+            if(inputValues.size() != input.nodes.size()) {
+                cerr << "Error: Input size mismatch!" << endl;
+                return {};
+            }
             this->feedForward(inputValues);
             vector<double> results;
 
@@ -673,7 +679,13 @@ class NeuralNetwork
             return results;
         }
         vector<double> predictBiggest(const vector<double> &inputValues)
-        {
+        {   
+
+            if(inputValues.size() != input.nodes.size()) {
+                cerr << "Error: Input size mismatch!" << endl;
+                return {};
+            }
+            
             this->feedForward(inputValues);
 
             double result = 0;
@@ -886,8 +898,11 @@ class NeuralNetwork
     
             // Generate random indices                  // Verify so it doesn't repeat and test on unique samples, and also verify that it doesn't go out of bounds if tests_number > data.inputs.size()
             srand(time(0));
+
             for (int i = 0; i < tests_number && i < data.inputs.size(); i++) {
+
                 int randomIdx = rand() % data.inputs.size();
+
                 testedIndices.push_back(randomIdx);
             }
     
