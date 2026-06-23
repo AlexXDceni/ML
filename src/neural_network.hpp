@@ -12,6 +12,7 @@
 #include <sstream>
 #include <csignal>
 #include <cstdlib>
+#include <omp.h>
 
 #include "include/json.hpp"
 //#include "include/file_convertor.hpp"
@@ -40,43 +41,14 @@ class NeuralNetwork
     
         // Layers
 
-        class Input_Node
-        {
-        public:
-            double value;
-            vector<double> weights;
-
-            Input_Node(int numNodesNextLayer)
-            {
-                value = 0;
-                for (auto it = 0; it != numNodesNextLayer; ++it)
-                {
-                    weights.push_back(get_random());
-                }
-            }
-        };
-        class Input_Layer
-        {
-        public:
-            vector<Input_Node> nodes;
-
-            Input_Layer() {};
-            Input_Layer(int n, int numNodesNextLayer)
-            {
-                for (int i = 0; i < n; ++i)
-                {
-                    nodes.push_back(Input_Node(numNodesNextLayer));
-                }
-            }
-        };
-        class Hidden_Node
+        class Node
         {
         public:
             double value;
             double bias;
             vector<double> weights;
 
-            Hidden_Node(int numNodesNextLayer)
+            Node(int numNodesNextLayer = 0)
             {
                 value = 0;
                 bias = 0;
@@ -86,43 +58,17 @@ class NeuralNetwork
                 }
             }
         };
-        class Hidden_Layer
+        class Layer
         {
         public:
-            vector<Hidden_Node> nodes;
+            vector<Node> nodes;
 
-            Hidden_Layer() {};
-            Hidden_Layer(int n, int numNodesNextLayer)
-            {
-
-                for (int i = 0; i < n; ++i)
-                {
-                    nodes.push_back(Hidden_Node(numNodesNextLayer));
-                }
-            }
-        };
-        class Output_Node
-        {
-        public:
-            double value;
-            double bias;
-            Output_Node()
-            {
-                value = 0;
-                bias = 0;
-            }
-        };
-        class Output_Layer
-        {
-        public:
-            vector<Output_Node> nodes;
-
-            Output_Layer() {};
-            Output_Layer(int n)
+            Layer() {};
+            Layer(int n, int numNodesNextLayer)
             {
                 for (int i = 0; i < n; ++i)
                 {
-                    nodes.push_back(Output_Node());
+                    nodes.push_back(Node(numNodesNextLayer));
                 }
             }
         };
@@ -134,7 +80,8 @@ class NeuralNetwork
             vector<vector<double>> inputs;
             vector<vector<double>> targets;
         };
-        struct metadata {
+        struct metadata 
+        {
             string model_name;
             string model_version;
             string author;
@@ -146,14 +93,16 @@ class NeuralNetwork
         metadata meta;
         TrainingData data;
 
+        string activation_func;
         vector<int> sizes;
+        
         int input_nodes;
         vector<int> hidden_layers;
         int output_nodes;
-        string activation_func;
-        Input_Layer input;
-        vector<Hidden_Layer> hidden;
-        Output_Layer output;
+
+        Layer input;
+        vector<Layer> hidden;
+        Layer output;
 
         // Constructor
 
@@ -186,19 +135,31 @@ class NeuralNetwork
             output_nodes = sizes.back();
 
             int numLayersAfterInput = (sizes.size() > 1) ? sizes[1] : 0;
-            input = Input_Layer(input_nodes, numLayersAfterInput);
+            input = Layer(input_nodes, numLayersAfterInput);
 
             for (int i = 1; i < sizes.size() - 1; ++i)
             {
                 hidden_layers.push_back(sizes[i]);
-                hidden.push_back(Hidden_Layer(sizes[i], sizes[i + 1]));
+                hidden.push_back(Layer(sizes[i], sizes[i + 1]));
             }
-            output = Output_Layer(output_nodes);
+            output = Layer(output_nodes, 0);
         }
+        ~NeuralNetwork() {}
 
         // Save/Load
 
-        void load_model(string filename){
+        void print_model_info() {
+            cout << "Model Name: " << meta.model_name << endl;
+            cout << "Version: " << meta.model_version << endl;
+            cout << "Author: " << meta.author << endl;
+            cout << "Created: " << meta.creation_timestamp << endl;
+            cout << "Last Updated: " << meta.timestamp << endl;
+            cout << "Parameter Count: " << meta.param_count << endl;
+        }
+        void update_timestamp() {
+            meta.timestamp = get_time();
+        }
+        void load_model(const string &filename){
 
             cout << "Loading model from " << filename << "..." <<endl;
 
@@ -278,7 +239,7 @@ class NeuralNetwork
         
             cout << "Neural model loaded successfully!" << endl;
         }
-        void save_model(string filename){
+        void save_model(const string &filename){
 
             cout << "Saving model to " << filename << "..." << endl;
             
@@ -336,7 +297,7 @@ class NeuralNetwork
             file.close();
             cout << "Model saved successfully!" << endl;
         }
-        tuple<vector<int>, string, metadata> get_params(string filename){
+        tuple<vector<int>, string, metadata> get_params(const string &filename){
             
             ifstream file(filename);
 
@@ -372,7 +333,7 @@ class NeuralNetwork
 
             return {saved_sizes, activation_func, meta_data};
         }
-        void loadData(string inputFile, string targetFile)
+        void loadData(const string &inputFile, const string &targetFile)
         {   
 
             cout << "Loading data from " << inputFile << " and " << targetFile << "..." << endl;
@@ -540,6 +501,10 @@ class NeuralNetwork
                 // L1 - Ln
 
                 for (int k = 0; k < hidden.size() - 1; ++k)
+                    
+                
+                    #pragma omp parallel for    // Parallelizing the outer loop for hidden layers
+
                     for (int j = 0; j < hidden[k + 1].nodes.size(); ++j)
                     {
                         for (int i = 0; i < hidden[k].nodes.size(); ++i)
@@ -566,6 +531,12 @@ class NeuralNetwork
 
         void backpropagate(double learning_rate, int epochs, int checkpointInterval = 0, int displayInterval = 1) {
             for (int e = 0; e < epochs; ++e) {
+
+
+                // Start measuring time
+                auto start_time = std::chrono::high_resolution_clock::now();
+
+
                 double total_mse = 0;
 
                 for (int d = 0; d < data.inputs.size(); ++d) {
@@ -582,9 +553,13 @@ class NeuralNetwork
 
 
                     vector<vector<double>> hidden_deltas(hidden.size());
+                   
                     for (int k = hidden.size() - 1; k >= 0; --k) {
+
                         hidden_deltas[k].resize(hidden[k].nodes.size());
-                        
+
+                        #pragma omp parallel for    // Parallelizing the outer loop for hidden layers
+
                         for (int i = 0; i < hidden[k].nodes.size(); ++i) {
                             double error = 0;
                             
@@ -632,8 +607,14 @@ class NeuralNetwork
                     }
                 }
 
-                if ( displayInterval  > 0 && e % displayInterval == 0) {
-                    cout << "Epoch " << e << " | MSE: " << (total_mse / (data.inputs.size() * output.nodes.size())) << endl;
+
+                // End measuring time
+                auto end_time = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+
+
+                if ( displayInterval > 0 && e % displayInterval == 0) {
+                    cout << "Epoch " << e << " | MSE: " << (total_mse / (data.inputs.size() * output.nodes.size())) << " | finished in " << duration / 1000.0 << " seconds.\n" ;
                 }
 
                 if( e != 0 && checkpointInterval > 0 && e % checkpointInterval == 0) {
@@ -702,6 +683,12 @@ class NeuralNetwork
             return {result};
         }
 
+
+
+
+    // *  These functions are specific and could be moved to a separate class or utility file
+
+
         // Save on Ctrl + C
 
         inline static NeuralNetwork* current_instance = nullptr;
@@ -721,7 +708,7 @@ class NeuralNetwork
 
         // Other functions for specific tasks
 
-        void addPhotoToTraining(string filename, double target){ 
+        void addPhotoToTraining(const string &filename, double target){ 
             ifstream file(filename, ios::binary);
             if (!file.is_open())
             {
@@ -796,10 +783,13 @@ class NeuralNetwork
         }
         int reverseInt(int i) {
             unsigned char c1, c2, c3, c4;
-            c1 = i & 255; c2 = (i >> 8) & 255; c3 = (i >> 16) & 255; c4 = (i >> 24) & 255;
+            c1 = i & 255;
+            c2 = (i >> 8) & 255;
+            c3 = (i >> 16) & 255; 
+            c4 = (i >> 24) & 255;
             return ((int)c1 << 24) + ((int)c2 << 16) + ((int)c3 << 8) + c4;
         }
-        void loadMnist(string image_path, string label_path, int max_samples = -1) {
+        void loadMnist(const string &image_path, const string &label_path, int max_samples = -1) {
 
             
             cout << "Loading MNIST dataset..." << endl;
@@ -884,7 +874,7 @@ class NeuralNetwork
             
             displayMnistImage(data.inputs[imageId]);
         }
-        void MnistTest(string input_file, string target_file, int max_samples, int tests_number) {
+        void MnistTest(const string &input_file, const string &target_file, int max_samples, int tests_number) {
             
             
             loadMnist(input_file, target_file, max_samples);

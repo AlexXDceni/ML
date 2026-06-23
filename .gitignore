@@ -41,8 +41,10 @@
 *.dwo
 
 Folders
+.vs/*
 .vscode/*
 checkpoint*/**/*.json
 build/*
 src/gui/*
+src/trial/*
 imgui.ini
