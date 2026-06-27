@@ -1,6 +1,11 @@
 #include <iostream>
 #include <string>
+
 #include "neural_network.hpp"
+
+// utils
+#include "include/utils/neural_network_signal_handler.hpp"
+#include "include/utils/mnist_utils.hpp"
 
 using namespace std;
 
@@ -20,12 +25,14 @@ const string IMAGES_DIR = DATA_DIR + "images/";
 const string SAVE_FILE = MODELS_DIR + model_name + ".json";
 const string INPUT_FILE = IO_DIR + "inputs.in";
 const string TARGET_FILE = IO_DIR + "targets.in";
+
+//? MNIST dataset files
 const string MNIST_MODEL_NAME = "mnist_model";   // mnist_model --> model for mnist dataset
 const string MNIST_SAVE_FILE = MODELS_DIR + MNIST_MODEL_NAME + ".json";
-const string TRAINING_MINST_INPUTS_FILE = MNIST_DIR + "train-images.idx3-ubyte";
-const string TRAINING_MINST_LABELS_FILE = MNIST_DIR + "train-labels.idx1-ubyte";
-const string MINST_INPUTS_FILE = MNIST_DIR + "t10k-images.idx3-ubyte";
-const string MINST_LABELS_FILE = MNIST_DIR + "t10k-labels.idx1-ubyte";
+const string TRAINING_MNIST_INPUTS_FILE = MNIST_DIR + "train-images.idx3-ubyte";
+const string TRAINING_MNIST_LABELS_FILE = MNIST_DIR + "train-labels.idx1-ubyte";
+const string MNIST_INPUTS_FILE = MNIST_DIR + "t10k-images.idx3-ubyte";
+const string MNIST_LABELS_FILE = MNIST_DIR + "t10k-labels.idx1-ubyte";
 
 
 //? Training parameters
@@ -101,7 +108,7 @@ int main( int argc , char* argv[] )
         case 2: // Learn
         {  
             NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );  
-            nn.signalHandler(saveOnInterrupt);
+            NeuralNetworkSignalHandler::signalHandler(&nn, saveOnInterrupt);
             nn.load_model(SAVE_FILE);
 
 
@@ -131,7 +138,6 @@ int main( int argc , char* argv[] )
             break;
         }
 
-
         case 4: // Test mnist
         {
             NeuralNetwork nn = NeuralNetwork( nn.get_params(MNIST_SAVE_FILE) );
@@ -142,18 +148,18 @@ int main( int argc , char* argv[] )
             const int tests_number = 1000;
 
 
-            nn.MnistTest(MINST_INPUTS_FILE, MINST_LABELS_FILE, max_samples, tests_number);
+            MNIST::MnistTest(nn, MNIST_INPUTS_FILE, MNIST_LABELS_FILE, max_samples, tests_number);
             break;
         }
 
         case 5: // Learn mnist
         {
             NeuralNetwork nn = NeuralNetwork( nn.get_params(MNIST_SAVE_FILE) );  
-            nn.signalHandler(saveOnInterrupt);
+            NeuralNetworkSignalHandler::signalHandler(&nn, saveOnInterrupt);
             nn.load_model(MNIST_SAVE_FILE);
 
 
-            nn.loadMnist(TRAINING_MINST_INPUTS_FILE, TRAINING_MINST_LABELS_FILE, mnist_max_samples); 
+            MNIST::loadMnist(nn, TRAINING_MNIST_INPUTS_FILE, TRAINING_MNIST_LABELS_FILE, mnist_max_samples); 
             nn.backpropagate(learning_rate, epochs, checkpointInterval, displayInterval); 
 
 
