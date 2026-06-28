@@ -46,5 +46,6 @@ Folders
 checkpoint*/**/*.json
 build/*
 src/gui/*
+src/hud/*
 src/trial/*
 imgui.ini
