@@ -10,7 +10,7 @@
     // FILE FROM OTHER PROJECT ON GITHUB: https://github.com/AlexXDceni/File_convertor_to_PPM
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "../include/stb_image.h"
+#include "../external/stb_image.h"
 
 #ifdef _WIN32
     #include <direct.h>

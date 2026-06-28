@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 
-#include "neural_network.hpp"
+#include "include/neural_network.hpp"
 
 // utils
 #include "include/utils/neural_network_signal_handler.hpp"
