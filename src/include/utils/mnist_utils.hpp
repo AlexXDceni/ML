@@ -3,9 +3,9 @@
 #include <iostream>
 #include <fstream>
 
-#include "../../neural_network.hpp"
+#include "../neural_network.hpp"
 
-#include "../file_convertor.hpp"
+#include "file_convertor.hpp"
 
 namespace MNIST {
 

@@ -1,11 +1,16 @@
+#define NOBYTE    
+#define NOMINMAX   
+#include <windows.h>
+
 #include <iostream>
 #include <string>
 
 #include "include/neural_network.hpp"
 
 // utils
-#include "include/utils/neural_network_signal_handler.hpp"
+#include "include/utils/nn_signal_handler.hpp"
 #include "include/utils/mnist_utils.hpp"
+#include "include/utils/gui_video_util.hpp"
 
 using namespace std;
 
@@ -47,13 +52,15 @@ const int checkpointInterval = -1;  // -1 means no checkpoints, otherwise it wil
 const int mnist_max_samples = -1;   // -1 means load all samples, otherwise it will load only the specified number of samples from the mnist dataset
 
 
-const int task = 5;             
+const int task = 7;             
 // 0 - Create
 // 1 - Change metadata
 // 2 - Learn
 // 3 - Predict
 // 4 - Test mnist
 // 5 - Learn mnist
+// 6 - Classify points
+// 7 - Fractal
 
 
 int main( int argc , char* argv[] )
@@ -165,6 +172,25 @@ int main( int argc , char* argv[] )
 
             nn.save_model(MNIST_SAVE_FILE);
             break;
+        }
+
+        case 6: // Classify Points
+        {
+                const int RESOLUTION = 800; 
+                GUI_HUD::ExternalScreen screen(RESOLUTION, RESOLUTION);
+
+                NeuralNetwork nn({2, 16, 16, 1}, "sigmoid"); 
+                GUI_HUD::classify_points(nn,screen,RESOLUTION,true);
+                break;
+        }
+
+        case 7: // Fractal
+        {
+                const int RESOLUTION = 800; 
+                GUI_HUD::ExternalScreen screen(RESOLUTION, RESOLUTION);
+                NeuralNetwork nn({2, 64, 64, 3}, "sigmoid"); ;
+                GUI_HUD::fractal(nn,screen,RESOLUTION);
+                break;
         }
 
         default:

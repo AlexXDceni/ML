@@ -12,7 +12,7 @@
 #include <sstream>
 #include <omp.h>
 
-#include "include/json.hpp"
+#include "external/json.hpp"
 
 using namespace std;
 using json = nlohmann::json;

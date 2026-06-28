@@ -3,7 +3,7 @@
 #include <csignal>
 #include <cstdlib>
 
-#include "../..//neural_network.hpp"
+#include "../neural_network.hpp"
 
 namespace NeuralNetworkSignalHandler {
 
