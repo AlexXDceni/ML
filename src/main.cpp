@@ -1,56 +1,40 @@
 #define NOBYTE    
 #define NOMINMAX   
 #include <windows.h>
-
 #include <iostream>
 #include <string>
-
 #include "include/neural_network.hpp"
-
-// utils
-#include "include/utils/nn_signal_handler.hpp"
-#include "include/utils/mnist_utils.hpp"
+#include "include/utils/nn_signal_handler_util.hpp"
+#include "include/utils/mnist_util.hpp"
 #include "include/utils/gui_video_util.hpp"
+#include "include/utils/functions_util.hpp"
 
 using namespace std;
 
-//? Model name declaration
 const string model_name = "test_model";   
 
+namespace DIRS {
+    //? Directries
+    const string MODELS_DIR = "../models/";
+    const string DATA_DIR = "../data/";
+    const string IO_DIR = DATA_DIR + "io/";
+    const string MNIST_DIR = DATA_DIR + "mnist/";
+    const string IMAGES_DIR = DATA_DIR + "images/";
 
-//? Directries
-const string MODELS_DIR = "../models/";
-const string DATA_DIR = "../data/";
-const string IO_DIR = DATA_DIR + "io/";
-const string MNIST_DIR = DATA_DIR + "mnist/";
-const string IMAGES_DIR = DATA_DIR + "images/";
+    //? Files
+    const string SAVE_FILE = MODELS_DIR + model_name + ".json";
+    const string INPUT_FILE = IO_DIR + "inputs.in";
+    const string TARGET_FILE = IO_DIR + "targets.in";
 
-
-//? Files
-const string SAVE_FILE = MODELS_DIR + model_name + ".json";
-const string INPUT_FILE = IO_DIR + "inputs.in";
-const string TARGET_FILE = IO_DIR + "targets.in";
-
-//? MNIST dataset files
-const string MNIST_MODEL_NAME = "mnist_model";   // mnist_model --> model for mnist dataset
-const string MNIST_SAVE_FILE = MODELS_DIR + MNIST_MODEL_NAME + ".json";
-const string TRAINING_MNIST_INPUTS_FILE = MNIST_DIR + "train-images.idx3-ubyte";
-const string TRAINING_MNIST_LABELS_FILE = MNIST_DIR + "train-labels.idx1-ubyte";
-const string MNIST_INPUTS_FILE = MNIST_DIR + "t10k-images.idx3-ubyte";
-const string MNIST_LABELS_FILE = MNIST_DIR + "t10k-labels.idx1-ubyte";
-
-
-//? Training parameters
-
-const int epochs = 50000;
-const double learning_rate = 0.05;
-
-
-const bool saveOnInterrupt = true;  // If true, the model will be saved when the program receives an interrupt signal (e.g., Ctrl+C)
-const int displayInterval = 1;      // Display loss every displayInterval epochs, -1 means no display
-const int checkpointInterval = -1;  // -1 means no checkpoints, otherwise it will save the model every checkpointInterval epochs
-const int mnist_max_samples = -1;   // -1 means load all samples, otherwise it will load only the specified number of samples from the mnist dataset
-
+    //? MNIST dataset files
+    const string MNIST_MODEL_NAME = "mnist_model"; 
+    const string MNIST_SAVE_FILE = MODELS_DIR + MNIST_MODEL_NAME + ".json";
+    const string TRAINING_MNIST_INPUTS_FILE = MNIST_DIR + "train-images.idx3-ubyte";
+    const string TRAINING_MNIST_LABELS_FILE = MNIST_DIR + "train-labels.idx1-ubyte";
+    const string MNIST_INPUTS_FILE = MNIST_DIR + "t10k-images.idx3-ubyte";
+    const string MNIST_LABELS_FILE = MNIST_DIR + "t10k-labels.idx1-ubyte";
+}
+using namespace DIRS;
 
 const int task = 7;             
 // 0 - Create
@@ -60,15 +44,13 @@ const int task = 7;
 // 4 - Test mnist
 // 5 - Learn mnist
 // 6 - Classify points
-// 7 - Fractal
+// 7 - Math Function
 
 
 int main( int argc , char* argv[] )
 {
-
     switch (task)   
     {
-    
         case 0: // Create
         {           
             NeuralNetwork::metadata meta;
@@ -82,23 +64,27 @@ int main( int argc , char* argv[] )
             const int INPUT = 3;
             const int OUTPUT = 1;
 
-
-            const string activation_func = "sigmoid";
-            // sigmoid  <- By default if no param passsed through
+            vector<string> activations = {
+                "none",
+                "sigmoid",
+                "sigmoid",
+                "sigmoid"
+            };
+            // sigmoid 
             // relu
             // leaky_relu 
             // linear 
             // tanh 
             // elu 
+            
+            NeuralNetwork nn = NeuralNetwork( {INPUT, 5, 5, OUTPUT}, activations, meta ); 
 
-
-            NeuralNetwork nn = NeuralNetwork( {INPUT, 5, 5, OUTPUT}, activation_func , meta ); 
             nn.update_timestamp(); 
             nn.save_model(SAVE_FILE);
             break; 
         }
         
-        case 1: // Change metadata   
+        case 1: // Change metadata
         {   
             NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );  
             nn.load_model(SAVE_FILE);
@@ -114,12 +100,20 @@ int main( int argc , char* argv[] )
 
         case 2: // Learn
         {  
+            const bool saveOnInterrupt = true;  // If true, the model will be saved when the program receives an interrupt signal (Ctrl+C)
+
             NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );  
             NeuralNetworkSignalHandler::signalHandler(&nn, saveOnInterrupt);
             nn.load_model(SAVE_FILE);
 
 
             nn.loadData(INPUT_FILE, TARGET_FILE);
+
+            const int epochs = 50000;
+            const double learning_rate = 0.05;
+            const int checkpointInterval = -1; // -1 means no checkpoints, otherwise it will save the model every checkpointInterval epochs
+            const int displayInterval = 1;  // Display loss every displayInterval epochs, -1 means no display
+
             nn.backpropagate(learning_rate, epochs, checkpointInterval, displayInterval); 
 
 
@@ -160,13 +154,23 @@ int main( int argc , char* argv[] )
         }
 
         case 5: // Learn mnist
-        {
+        {   
+            const bool saveOnInterrupt = true;  // If true, the model will be saved when the program receives an interrupt signal (Ctrl+C)
+
             NeuralNetwork nn = NeuralNetwork( nn.get_params(MNIST_SAVE_FILE) );  
             NeuralNetworkSignalHandler::signalHandler(&nn, saveOnInterrupt);
             nn.load_model(MNIST_SAVE_FILE);
 
+            const int mnist_max_samples = -1;  // -1 means load all samples, otherwise it will load only the specified number of samples from the mnist dataset
+
 
             MNIST::loadMnist(nn, TRAINING_MNIST_INPUTS_FILE, TRAINING_MNIST_LABELS_FILE, mnist_max_samples); 
+
+            const int epochs = 50000;
+            const double learning_rate = 0.05;
+            const int checkpointInterval = -1; // -1 means no checkpoints, otherwise it will save the model every checkpointInterval epochs
+            const int displayInterval = 1;  // Display loss every displayInterval epochs, -1 means no display
+
             nn.backpropagate(learning_rate, epochs, checkpointInterval, displayInterval); 
 
 
@@ -179,23 +183,29 @@ int main( int argc , char* argv[] )
                 const int RESOLUTION = 800; 
                 GUI_HUD::ExternalScreen screen(RESOLUTION, RESOLUTION);
 
-                NeuralNetwork nn({2, 16, 16, 1}, "sigmoid"); 
+                vector<string> activations = { "none", "sigmoid", "sigmoid", "sigmoid" };
+
+                NeuralNetwork nn({2, 16, 16, 1}, activations); 
                 GUI_HUD::classify_points(nn,screen,RESOLUTION,true);
                 break;
         }
 
-        case 7: // Fractal
+        case 7: // Math Function
         {
                 const int RESOLUTION = 800; 
                 GUI_HUD::ExternalScreen screen(RESOLUTION, RESOLUTION);
-                NeuralNetwork nn({2, 64, 64, 3}, "sigmoid"); ;
-                GUI_HUD::fractal(nn,screen,RESOLUTION);
+                
+                vector<string> activations = { "none", "sigmoid", "sigmoid", "sigmoid" };
+                NeuralNetwork nn({2, 64, 64, 1}, activations); ;
+                // GUI_HUD::generate_and_learn_map(nn, screen, RESOLUTION, GUI_HUD::julia_generator);
+                GUI_HUD::old_generation(nn, screen, RESOLUTION);
+            
                 break;
         }
 
         default:
         {
-            cout<<"No test case selected, change task value.";
+            cerr<<"No test case selected, change task value.";
             break;
         }
     }   

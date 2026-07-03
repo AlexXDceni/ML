@@ -41,10 +41,12 @@ class NeuralNetwork
             public:
                 int num_neurons;
                 int num_next_layer_neurons; 
+                string activation;
 
                 vector<double> values;  
                 vector<double> biases; 
                 vector<double> weights; 
+
                 //vector<double> errors;
 
                 Layer() {}
@@ -79,7 +81,6 @@ class NeuralNetwork
         metadata meta;
         TrainingData data;
 
-        string activation_func;
         vector<int> sizes;
         
         int input_nodes;
@@ -90,13 +91,16 @@ class NeuralNetwork
         vector<Layer> hidden;
         Layer output;
 
+        vector<double> output_deltas;
+        vector<vector<double>> hidden_deltas;
+
         // Constructor
 
-        NeuralNetwork(vector<int> list, string activationFunc = "sigmoid", metadata params = {}) : sizes(list), activation_func(activationFunc), meta(params) { init(); }
-        NeuralNetwork(initializer_list<int> list, string activationFunc = "sigmoid", metadata params = {}) : sizes(list), activation_func(activationFunc), meta(params){ init();}
-        NeuralNetwork(tuple<vector<int>, string, metadata> params) : sizes(get<0>(params)), activation_func(get<1>(params)), meta(get<2>(params)) { init(); }
+        NeuralNetwork(vector<int> list, vector<string> activations, metadata params = {}) : sizes(list), meta(params) { init(activations); }
+        NeuralNetwork(initializer_list<int> list, vector<string> activations , metadata params = {}) : sizes(list), meta(params){ init(activations);}
+        NeuralNetwork(tuple<vector<int>, vector<string>, metadata> params) : sizes(get<0>(params)), meta(get<2>(params)) { init(get<1>(params)); }
         ~NeuralNetwork() {}
-        void init()
+        void init(vector<string> activations)
         {   
 
             hidden.clear();
@@ -111,13 +115,22 @@ class NeuralNetwork
 
             int numLayersAfterInput = (sizes.size() > 1) ? sizes[1] : 0;
             input = Layer(input_nodes, numLayersAfterInput);
+            input.activation = activations[0];
+
 
             for (int i = 1; i < sizes.size() - 1; ++i)
             {
                 hidden_layers.push_back(sizes[i]);
                 hidden.push_back(Layer(sizes[i], sizes[i + 1]));
             }
+
+            for( int i = 0 ; i < hidden.size(); i++ ){
+                hidden[i].activation = activations[i+1];
+            }
+
+
             output = Layer(output_nodes, 0);
+            output.activation = activations.back();     
         }
         
 
@@ -154,22 +167,20 @@ class NeuralNetwork
 
             vector<int> saved_sizes;
             saved_sizes.push_back(config["architecture"]["input_layer"]);
-        
+            
             vector<int> hidden_layers = config["architecture"]["hidden_layers"];
             for (int h_size : hidden_layers) {
                 saved_sizes.push_back(h_size);
+                
             }
-
             saved_sizes.push_back(config["architecture"]["output_layer"]);
-
-
 
             if (saved_sizes.size() != sizes.size()) {
                 cerr << "Error: Network layers count mismatch." << endl;
                 return;
             }
-
-
+            
+            
             for (int i = 0; i < sizes.size(); i++) {
                 if (saved_sizes[i] != sizes[i]) {
                     cerr << "Error: Network layers mismatch." << endl;
@@ -178,6 +189,12 @@ class NeuralNetwork
                 }
             }
 
+            
+
+            vector<string> activs = config["architecture"]["activation_function"];
+            
+
+            input.activation = activs[0];
             vector<vector<double>> input_weights = config["params"]["input_layer"]["weights"];
             for (int i = 0; i < input.num_neurons; i++) {
                 for (int j = 0; j < input.num_next_layer_neurons; j++) {
@@ -188,22 +205,33 @@ class NeuralNetwork
             for (int i = 0; i < hidden.size(); i++) {
                 string layer_key = "hidden_layer_" + to_string(i);
                 
+                hidden[i].activation = activs[i+1];
                 vector<vector<double>> hidden_weights = config["params"][layer_key]["weights"];
                 vector<double> hidden_biases = config["params"][layer_key]["bias"];
-
+                
                 for (int n = 0; n < hidden[i].num_neurons; n++) {
                     hidden[i].biases[n] = hidden_biases[n];
                     for (int w = 0; w < hidden[i].num_next_layer_neurons; w++) {
                         hidden[i].weights[n * hidden[i].num_next_layer_neurons + w] = hidden_weights[n][w];
                     }
                 }
+                
             }
 
+            output.activation = activs.back();
             vector<double> output_biases = config["params"]["output_layer"]["bias"];
             for (int i = 0; i < output.num_neurons; i++) {
                 output.biases[i] = output_biases[i];
             }
-        
+            
+
+
+
+
+
+
+
+
             cout << "Neural model loaded successfully!" << endl;
         }
         void save_model(const string &filename){
@@ -232,11 +260,20 @@ class NeuralNetwork
                 param_count += (sizes[i]+1)*sizes[i+1]; 
             }
 
+            meta.param_count = param_count;
             config["metadata"]["param_count"] = param_count; 
 
             config["architecture"]["input_layer"] = input_nodes;
             config["architecture"]["hidden_layers"] = hidden_layers;
             config["architecture"]["output_layer"] = output_nodes;
+
+            vector<string> activation_func;
+
+            activation_func.push_back(input.activation);
+            for (auto &layer : hidden)
+                activation_func.push_back(layer.activation);
+            activation_func.push_back(output.activation);
+
             config["architecture"]["activation_function"] = activation_func;
 
             for (int i = 0; i < input.num_neurons; i++) {
@@ -244,6 +281,7 @@ class NeuralNetwork
                     config["params"]["input_layer"]["weights"][i][j] = input.weights[i * input.num_next_layer_neurons + j];
                 }
             }
+            
 
             for (int i = 0; i < hidden.size(); i++) {
                 string layer_key = "hidden_layer_" + to_string(i);
@@ -255,7 +293,7 @@ class NeuralNetwork
                     }
                 }
             }
-
+            
             for (int i = 0; i < output.num_neurons; i++) {
                 config["params"]["output_layer"]["bias"][i] = output.biases[i];
             }
@@ -265,32 +303,34 @@ class NeuralNetwork
             file.close();
             cout << "Model saved successfully!" << endl;
         }
-        tuple<vector<int>, string, metadata> get_params(const string &filename){
+        tuple<vector<int>, vector<string>,  metadata> get_params(const string &filename){
             
             ifstream file(filename);
 
             if (!file.is_open()) {
                 cerr << "Error: Load file not found" << endl;
                 // return {{}, "", {}};
-                return make_tuple(vector<int>{}, string{""}, metadata{});
+                return make_tuple(vector<int>{}, vector<string>{}, metadata{});
             }
 
             json config;
             file >> config;
             file.close();
 
+            vector<string> activations = config["architecture"]["activation_function"];
             vector<int> saved_sizes;
             saved_sizes.push_back(config["architecture"]["input_layer"]);
-        
+
             vector<int> hidden_layers = config["architecture"]["hidden_layers"];
             for (int h_size : hidden_layers) {
                 saved_sizes.push_back(h_size);
             }
 
+
+
             saved_sizes.push_back(config["architecture"]["output_layer"]);
             
-            string activation_func = config["architecture"]["activation_function"];
-
+            
             metadata meta_data;
             meta_data.model_name = config["model_name"];
             meta_data.model_version = config["metadata"]["model_version"];
@@ -299,7 +339,7 @@ class NeuralNetwork
             meta_data.timestamp = config["metadata"]["timestamp"];
             meta_data.param_count = config["metadata"]["param_count"];
 
-            return {saved_sizes, activation_func, meta_data};
+            return {saved_sizes, activations, meta_data};
         }
         void loadData(const string &inputFile, const string &targetFile)
         {   
@@ -369,7 +409,8 @@ class NeuralNetwork
 
         double ACTIVATION(double value, const string &activation_func, double alpha = 1.0)
         {
-            
+            if (activation_func == "none")
+                return value;
             if (activation_func == "sigmoid")
                 return 1.0 / (1.0 + exp(-value));
             if (activation_func == "relu")
@@ -388,6 +429,8 @@ class NeuralNetwork
         }
         double GET_DERIVATIVE(double value, const string &activation_func) {
 
+            if (activation_func == "none")
+                return 1.0;
             if (activation_func == "sigmoid")
                 return value * (1.0 - value);
             if (activation_func == "relu")
@@ -444,7 +487,7 @@ class NeuralNetwork
                     {
                         output.values[j] += input.values[i] * input.weights[i * input.num_next_layer_neurons + j];
                     }
-                    output.values[j] = ACTIVATION(output.values[j] + output.biases[j], activation_func);
+                    output.values[j] = ACTIVATION(output.values[j] + output.biases[j], output.activation);
                 }
             }
 
@@ -459,14 +502,13 @@ class NeuralNetwork
                     {
                         hidden[0].values[j] += input.values[i] * input.weights[i * input.num_next_layer_neurons + j];
                     }
-                    hidden[0].values[j] = ACTIVATION(hidden[0].values[j] + hidden[0].biases[j], activation_func);
+                    hidden[0].values[j] = ACTIVATION(hidden[0].values[j] + hidden[0].biases[j], hidden[0].activation);
                 }
 
                 // L1 - Ln
 
-                for (int k = 0; k < hidden.size() - 1; ++k)
+                for (int k = 0; k < hidden.size() - 1; ++k){
                     
-                
                     //#pragma omp parallel for    // Parallelizing the outer loop for hidden layers
 
                     for (int j = 0; j < hidden[k + 1].values.size(); ++j)
@@ -475,8 +517,9 @@ class NeuralNetwork
                         {
                             hidden[k + 1].values[j] += hidden[k].values[i] * hidden[k].weights[i * hidden[k].num_next_layer_neurons + j];
                         }
-                        hidden[k + 1].values[j] = ACTIVATION(hidden[k + 1].values[j] + hidden[k + 1].biases[j], activation_func);
+                        hidden[k + 1].values[j] = ACTIVATION(hidden[k + 1].values[j] + hidden[k + 1].biases[j], hidden[k+1].activation);
                     }
+                }
 
                 // Ln - O
 
@@ -486,14 +529,14 @@ class NeuralNetwork
                     {
                         output.values[j] += hidden[hidden.size() - 1].values[i] * hidden[hidden.size() - 1].weights[i * hidden[hidden.size() - 1].num_next_layer_neurons + j];
                     }
-                    output.values[j] = ACTIVATION(output.values[j] + output.biases[j], activation_func);
+                    output.values[j] = ACTIVATION(output.values[j] + output.biases[j], output.activation);
                 }
             }
         }
 
         // Learn
 
-        void backpropagate(double learning_rate, int epochs, int checkpointInterval = 0, int displayInterval = 1) {
+        void backpropagate(double learning_rate, int epochs, int checkpointInterval = 0, int displayInterval = 0) {
             for (int e = 0; e < epochs; ++e) {
 
 
@@ -506,19 +549,19 @@ class NeuralNetwork
                 for (int d = 0; d < data.inputs.size(); ++d) {
                     feedForward(data.inputs[d]);
 
-                    vector<double> output_deltas(output.num_neurons);
+                    output_deltas.resize(output.num_neurons);
 
                     for (int i = 0; i < output.num_neurons; ++i) {
                         double val = output.values[i];
                         double error = data.targets[d][i] - val; 
                         total_mse += error * error;
                         
-                        output_deltas[i] = error * GET_DERIVATIVE(val, activation_func);
+                        output_deltas[i] = error * GET_DERIVATIVE(val, output.activation);
                     }
 
                     if(!hidden.empty())
                     {
-                        vector<vector<double>> hidden_deltas(hidden.size());
+                        hidden_deltas.resize(hidden.size());
                     
                         for (int k = hidden.size() - 1; k >= 0; --k) {
 
@@ -541,7 +584,7 @@ class NeuralNetwork
                                 }
                                 
                                 double val = hidden[k].values[i];
-                                hidden_deltas[k][i] = error * GET_DERIVATIVE(val, activation_func);
+                                hidden_deltas[k][i] = error * GET_DERIVATIVE(val, hidden[k].activation);
                             }
                         }
 
