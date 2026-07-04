@@ -1,6 +1,10 @@
 {
     "architecture": {
-        "activation_function": "sigmoid",
+        "activation_function": [
+            "none",
+            "sigmoid",
+            "sigmoid"
+        ],
         "hidden_layers": [
             128
         ],

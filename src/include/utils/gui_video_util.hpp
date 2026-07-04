@@ -6,7 +6,9 @@
 #include <chrono>
 #include <random>
 #include <functional>
+#include <tchar.h>
 
+    //!    SAME AS IN ML FOLDER
 
 #include <windows.h>
 using namespace std;
@@ -92,11 +94,11 @@ namespace GUI_HUD
                 WNDCLASS wc = {};
                 wc.lpfnWndProc = WindowProc;
                 wc.hInstance = GetModuleHandle(NULL);
-                wc.lpszClassName = "AI";
+                wc.lpszClassName = TEXT("AI");
                 wc.style = CS_HREDRAW | CS_VREDRAW; 
                 RegisterClass(&wc);
 
-                hwnd = CreateWindowEx(0, wc.lpszClassName, "AI", 
+                hwnd = CreateWindowEx(0, wc.lpszClassName, TEXT("AI"), 
                     WS_OVERLAPPEDWINDOW | WS_VISIBLE, 
                     200, 100, w + 16, h + 39, NULL, NULL, wc.hInstance, this);
                 

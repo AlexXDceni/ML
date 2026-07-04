@@ -3,11 +3,10 @@
 #include "../neural_network.hpp"
 #include "gui_video_util.hpp"
 
+using namespace GUI_HUD;
 
 namespace GUI_FunctionsUtils
 {
-
-    using GeneratorFunc = std::function<std::vector<double>(double, double)>;
 
     void old_generation(NeuralNetwork& nn, ExternalScreen& screen, int RESOLUTION)
     {   
@@ -217,7 +216,7 @@ namespace GUI_FunctionsUtils
                 }
             }
   
-    void generate_and_learn_map(NeuralNetwork& nn, ExternalScreen& screen, int RESOLUTION, GeneratorFunc target_generator)
+    void generate_and_learn_map(NeuralNetwork& nn, ExternalScreen& screen, int RESOLUTION, std::function<std::vector<double>(double, double)> target_generator)
     {
         vector<vector<vector<double>>> target_map(RESOLUTION, vector<vector<double>>(RESOLUTION, vector<double>(3, 0.0)));
 

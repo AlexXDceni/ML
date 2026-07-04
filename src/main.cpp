@@ -1,8 +1,10 @@
 #define NOBYTE    
 #define NOMINMAX   
+
 #include <windows.h>
 #include <iostream>
 #include <string>
+
 #include "include/neural_network.hpp"
 #include "include/utils/nn_signal_handler_util.hpp"
 #include "include/utils/mnist_util.hpp"
@@ -36,173 +38,187 @@ namespace DIRS {
 }
 using namespace DIRS;
 
-const int task = 7;             
+const int task = -1;             
 // 0 - Create
 // 1 - Change metadata
-// 2 - Learn
+// 2 - Learn <- with input and target files
 // 3 - Predict
 // 4 - Test mnist
 // 5 - Learn mnist
 // 6 - Classify points
-// 7 - Math Function
+// 7 - Generate Math Function
 
+namespace Tasks{
+    void create(){
+        NeuralNetwork::metadata meta;
+        meta.model_name = model_name;
+        meta.model_version = "1.0.0";
+        meta.author = "Alex";
+        meta.creation_timestamp = get_time();
+        
+        
+        // NN architecture
+        const int INPUT = 3;
+        const int OUTPUT = 1;
+        
+        vector<string> activations = {
+            "none",
+            "sigmoid",
+            "sigmoid",
+            "sigmoid"
+        };
+        // sigmoid 
+        // relu
+        // leaky_relu 
+        // linear 
+        // tanh 
+        // elu 
+        
+        NeuralNetwork nn = NeuralNetwork( {INPUT, 5, 5, OUTPUT}, activations, meta ); 
+        
+        nn.update_timestamp(); 
+        nn.save_model(SAVE_FILE);
+    }
+    void change_metadata(){
+        NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );  
+        nn.load_model(SAVE_FILE);
+        
+        
+        nn.meta.model_version = "1.0.0";
+        nn.update_timestamp();
+        
+        
+        nn.save_model(SAVE_FILE);
+    }
+    void learn(){
+        const bool saveOnInterrupt = true;  // If true, the model will be saved when the program receives an interrupt signal (Ctrl+C)
+    
+        NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );  
+        NeuralNetworkSignalHandler::signalHandler(&nn, saveOnInterrupt);
+        nn.load_model(SAVE_FILE);
+        
+        nn.loadData(INPUT_FILE, TARGET_FILE);
+        
+        const int epochs = 50000;
+        const double learning_rate = 0.05;
+        const int checkpointInterval = -1; // -1 means no checkpoints, otherwise it will save the model every checkpointInterval epochs
+        const int displayInterval = 1;  // Display loss every displayInterval epochs, -1 means no display
+        
+        nn.backpropagate(learning_rate, epochs, checkpointInterval, displayInterval); 
+        
+        
+        nn.save_model(SAVE_FILE);
+    }
+    void predict(){
+        NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );    
+        nn.load_model(SAVE_FILE);
+        nn.loadData(INPUT_FILE, TARGET_FILE);
+
+
+        for (int i = 0; i < nn.data.inputs.size(); i++)
+        {
+            vector<double> prediction =  nn.predict(nn.data.inputs[i]); 
+            cout << "Input " << i << ": ";
+            for (double val : nn.data.inputs[i]) 
+                cout << val << " ";
+            cout << "-> AI says: " << prediction[0] << endl;
+        }
+    }
+    void test_mnist(){
+        NeuralNetwork nn = NeuralNetwork( nn.get_params(MNIST_SAVE_FILE) );
+        nn.load_model(MNIST_SAVE_FILE);
+
+        const int max_samples = 1000; 
+        const int tests_number = 1000;
+
+        MNIST::MnistTest(nn, MNIST_INPUTS_FILE, MNIST_LABELS_FILE, max_samples, tests_number);
+    }
+    void learn_mnist(){
+        const bool saveOnInterrupt = true;  // If true, the model will be saved when the program receives an interrupt signal (Ctrl+C)
+
+        NeuralNetwork nn = NeuralNetwork( nn.get_params(MNIST_SAVE_FILE) );  
+        NeuralNetworkSignalHandler::signalHandler(&nn, saveOnInterrupt);
+        nn.load_model(MNIST_SAVE_FILE);
+
+        const int mnist_max_samples = -1;  // -1 means load all samples, otherwise it will load only the specified number of samples from the mnist dataset
+
+
+        MNIST::loadMnist(nn, TRAINING_MNIST_INPUTS_FILE, TRAINING_MNIST_LABELS_FILE, mnist_max_samples); 
+
+        const int epochs = 50000;
+        const double learning_rate = 0.05;
+        const int checkpointInterval = -1; // -1 means no checkpoints, otherwise it will save the model every checkpointInterval epochs
+        const int displayInterval = 1;  // Display loss every displayInterval epochs, -1 means no display
+
+        nn.backpropagate(learning_rate, epochs, checkpointInterval, displayInterval); 
+
+
+        nn.save_model(MNIST_SAVE_FILE);
+    }
+    void classify(){
+        const int RESOLUTION = 800; 
+        GUI_HUD::ExternalScreen screen(RESOLUTION, RESOLUTION);
+
+        vector<string> activations = { "none", "sigmoid", "sigmoid", "sigmoid" };
+
+        NeuralNetwork nn({2, 16, 16, 1}, activations); 
+        GUI_FunctionsUtils::classify_points(nn,screen,RESOLUTION,true);
+    }
+    void generate_functions(){
+        const int RESOLUTION = 800; 
+        GUI_HUD::ExternalScreen screen(RESOLUTION, RESOLUTION);
+        
+        vector<string> activations = { "none", "sigmoid", "sigmoid", "sigmoid" };
+        NeuralNetwork nn({2, 64, 64, 1}, activations); ;
+        // GUI_HUD::generate_and_learn_map(nn, screen, RESOLUTION, GUI_HUD::julia_generator);
+        GUI_FunctionsUtils::old_generation(nn, screen, RESOLUTION);
+    }
+}
 
 int main( int argc , char* argv[] )
 {
     switch (task)   
     {
-        case 0: // Create
-        {           
-            NeuralNetwork::metadata meta;
-            meta.model_name = model_name;
-            meta.model_version = "1.0.0";
-            meta.author = "Alex";
-            meta.creation_timestamp = get_time();
-
-
-            // NN architecture
-            const int INPUT = 3;
-            const int OUTPUT = 1;
-
-            vector<string> activations = {
-                "none",
-                "sigmoid",
-                "sigmoid",
-                "sigmoid"
-            };
-            // sigmoid 
-            // relu
-            // leaky_relu 
-            // linear 
-            // tanh 
-            // elu 
-            
-            NeuralNetwork nn = NeuralNetwork( {INPUT, 5, 5, OUTPUT}, activations, meta ); 
-
-            nn.update_timestamp(); 
-            nn.save_model(SAVE_FILE);
+        case 0: 
+        {       
+            Tasks::create();    
             break; 
         }
-        
-        case 1: // Change metadata
+        case 1:
         {   
-            NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );  
-            nn.load_model(SAVE_FILE);
-        
-
-            nn.meta.model_version = "1.0.0";
-            nn.update_timestamp();
-    
-
-            nn.save_model(SAVE_FILE);
+            Tasks::change_metadata();
             break; 
         }
-
-        case 2: // Learn
+        case 2: 
         {  
-            const bool saveOnInterrupt = true;  // If true, the model will be saved when the program receives an interrupt signal (Ctrl+C)
-
-            NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );  
-            NeuralNetworkSignalHandler::signalHandler(&nn, saveOnInterrupt);
-            nn.load_model(SAVE_FILE);
-
-
-            nn.loadData(INPUT_FILE, TARGET_FILE);
-
-            const int epochs = 50000;
-            const double learning_rate = 0.05;
-            const int checkpointInterval = -1; // -1 means no checkpoints, otherwise it will save the model every checkpointInterval epochs
-            const int displayInterval = 1;  // Display loss every displayInterval epochs, -1 means no display
-
-            nn.backpropagate(learning_rate, epochs, checkpointInterval, displayInterval); 
-
-
-            nn.save_model(SAVE_FILE);
+            Tasks::learn();
             break;
         }
-
-        case 3: // Predict
+        case 3: 
         {
-            NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );    
-            nn.load_model(SAVE_FILE);
-            nn.loadData(INPUT_FILE, TARGET_FILE);
-
-
-            for (int i = 0; i < nn.data.inputs.size(); i++)
-            {
-                vector<double> prediction =  nn.predict(nn.data.inputs[i]); 
-                cout << "Input " << i << ": ";
-                for (double val : nn.data.inputs[i]) 
-                    cout << val << " ";
-                cout << "-> AI says: " << prediction[0] << endl;
-            }
+            Tasks::predict();
             break;
         }
-
-        case 4: // Test mnist
+        case 4: 
         {
-            NeuralNetwork nn = NeuralNetwork( nn.get_params(MNIST_SAVE_FILE) );
-            nn.load_model(MNIST_SAVE_FILE);
-
-
-            const int max_samples = 1000; 
-            const int tests_number = 1000;
-
-
-            MNIST::MnistTest(nn, MNIST_INPUTS_FILE, MNIST_LABELS_FILE, max_samples, tests_number);
+            Tasks::test_mnist();
             break;
         }
-
-        case 5: // Learn mnist
+        case 5:
         {   
-            const bool saveOnInterrupt = true;  // If true, the model will be saved when the program receives an interrupt signal (Ctrl+C)
-
-            NeuralNetwork nn = NeuralNetwork( nn.get_params(MNIST_SAVE_FILE) );  
-            NeuralNetworkSignalHandler::signalHandler(&nn, saveOnInterrupt);
-            nn.load_model(MNIST_SAVE_FILE);
-
-            const int mnist_max_samples = -1;  // -1 means load all samples, otherwise it will load only the specified number of samples from the mnist dataset
-
-
-            MNIST::loadMnist(nn, TRAINING_MNIST_INPUTS_FILE, TRAINING_MNIST_LABELS_FILE, mnist_max_samples); 
-
-            const int epochs = 50000;
-            const double learning_rate = 0.05;
-            const int checkpointInterval = -1; // -1 means no checkpoints, otherwise it will save the model every checkpointInterval epochs
-            const int displayInterval = 1;  // Display loss every displayInterval epochs, -1 means no display
-
-            nn.backpropagate(learning_rate, epochs, checkpointInterval, displayInterval); 
-
-
-            nn.save_model(MNIST_SAVE_FILE);
+            Tasks::learn_mnist();
             break;
         }
-
-        case 6: // Classify Points
+        case 6:
         {
-                const int RESOLUTION = 800; 
-                GUI_HUD::ExternalScreen screen(RESOLUTION, RESOLUTION);
-
-                vector<string> activations = { "none", "sigmoid", "sigmoid", "sigmoid" };
-
-                NeuralNetwork nn({2, 16, 16, 1}, activations); 
-                GUI_HUD::classify_points(nn,screen,RESOLUTION,true);
-                break;
+            Tasks::classify();
+            break;
         }
-
-        case 7: // Math Function
+        case 7:
         {
-                const int RESOLUTION = 800; 
-                GUI_HUD::ExternalScreen screen(RESOLUTION, RESOLUTION);
-                
-                vector<string> activations = { "none", "sigmoid", "sigmoid", "sigmoid" };
-                NeuralNetwork nn({2, 64, 64, 1}, activations); ;
-                // GUI_HUD::generate_and_learn_map(nn, screen, RESOLUTION, GUI_HUD::julia_generator);
-                GUI_HUD::old_generation(nn, screen, RESOLUTION);
-            
-                break;
+            Tasks::generate_functions();
+            break;
         }
-
         default:
         {
             cerr<<"No test case selected, change task value.";
