@@ -67,6 +67,10 @@ class NeuralNetwork
         {
             vector<vector<double>> inputs;
             vector<vector<double>> targets;
+            void clear(){
+                inputs.clear();
+                targets.clear();
+            }
         };
         struct metadata 
         {
