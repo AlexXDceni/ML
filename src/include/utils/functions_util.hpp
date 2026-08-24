@@ -1,16 +1,32 @@
 #pragma once
 #include <iostream>
+
+#include "raylib.h"
+
 #include "../neural_network.hpp"
-#include "gui_video_util.hpp"
 
-using namespace GUI_HUD;
+void basic_raylib_window(int width, int height, const std::string& title){
 
-namespace GUI_FunctionsUtils
-{
+    InitWindow(width, height, title.c_str());
+    SetTargetFPS(60);
 
-    void old_generation(NeuralNetwork& nn, ExternalScreen& screen, int RESOLUTION)
-    {   
-        // #pragma omp parallel for schedule(dynamic)
+    while (!WindowShouldClose()) {
+        BeginDrawing();
+
+            ClearBackground(RAYWHITE);
+            DrawText("Hello, Raylib!", 10, 10, 20, DARKGRAY);
+            
+        EndDrawing();
+    }
+    CloseWindow();
+}
+
+void old_generation(NeuralNetwork& nn, int RESOLUTION){
+
+    int e = 0;
+    double learning_rate = 0.02;
+
+    // #pragma omp parallel for schedule(dynamic)
         for(int y = 0; y < RESOLUTION; y+=2){
             for(int x = 0; x < RESOLUTION; x += 2){
 
@@ -34,12 +50,15 @@ namespace GUI_FunctionsUtils
             }
         }
 
-        int e = 0;
-        double learning_rate = 0.02;
-        
-        while(true){
 
+    InitWindow(RESOLUTION, RESOLUTION, "AI Function Generation");
+    SetTargetFPS(60);
 
+    while (!WindowShouldClose()) {
+
+        BeginDrawing();
+
+            ClearBackground(BLACK);
             nn.backpropagate(learning_rate,1);
             e++;
 
@@ -57,229 +76,261 @@ namespace GUI_FunctionsUtils
                     unsigned char g = 0; 
                     unsigned char b = static_cast<unsigned char>(value * 255); 
 
-                    screen.putPixel(x,y,r,g,b);
-                }
-
-                if(y%8==0){
-                    screen.reloadScreen();
+                   DrawPixel(x, y, Color{ r, g, b, 255 });
                 }
             }
-            
-            screen.reloadScreen();
-            cout<<"Epoch: "<< e << '\n';
+            DrawText(TextFormat("Epoch: %d", e), 10, 10, 20, RAYWHITE);
+
+        EndDrawing();
+
+    }
+    CloseWindow();
+}
+
+void classify_points(NeuralNetwork& nn, int RESOLUTION, bool isEmptyDataSet = false)
+{
+    cout << "========================================================\n";
+    cout << " [LMB]  -> Add blue point (Type 1)\n";
+    cout << " [RMB]  -> Add orange point (Type 0)\n";
+    cout << " [MMB]  -> Delete hovered point\n";
+    cout << "========================================================\n";
+
+    struct Points {
+        double nx, ny; 
+        double type;  
+    };
+    vector<Points> points_data_set;
+
+    if(!isEmptyDataSet){
+
+        mt19937 rng_puncte(42);
+        uniform_real_distribution<double> dist_random(-1.0, 1.0);
+
+        while (points_data_set.size() < 300) {
+
+            double px = dist_random(rng_puncte);
+            double py = dist_random(rng_puncte);
+            double dist = std::sqrt(px * px + py * py);
+
+
+            if (dist < 0.35) {
+                points_data_set.push_back({ px, py, 1.0 });
+            }
+            else if (dist > 0.55 && dist < 0.85) {
+                points_data_set.push_back({ px, py, 0.0 });
+            }   
 
         }
+
+        for (const auto& p : points_data_set) {
+            nn.data.inputs.push_back({ p.nx, p.ny });
+            nn.data.targets.push_back({ p.type });
+        }
+
     }
-    void classify_points(NeuralNetwork& nn, ExternalScreen& screen, int RESOLUTION, bool isEmptyDataSet = false)
-            {
-                cout << "========================================================\n";
-                cout << " [LMB]  -> Add blue point (Type 1)\n";
-                cout << " [RMB]  -> Add orange point (Type 0)\n";
-                cout << " [MMB]  -> Delete hovered point\n";
-                cout << "========================================================\n";
 
-                struct Points {
-                    double nx, ny; 
-                    double type;  
-                };
-                vector<Points> points_data_set;
-
-                if(!isEmptyDataSet){
-
-                    mt19937 rng_puncte(42);
-                    uniform_real_distribution<double> dist_random(-1.0, 1.0);
-
-                    while (points_data_set.size() < 300) {
-
-                        double px = dist_random(rng_puncte);
-                        double py = dist_random(rng_puncte);
-                        double dist = std::sqrt(px * px + py * py);
+    int e = 0;
+    double learning_rate = 0.05;
 
 
-                        if (dist < 0.35) {
-                            points_data_set.push_back({ px, py, 1.0 });
+    InitWindow(RESOLUTION, RESOLUTION, "AI Function Generation");
+    SetTargetFPS(60);
+
+    while (!WindowShouldClose()) {
+
+        if (!points_data_set.empty()) {
+            nn.backpropagate(learning_rate, 1, 0, 0); 
+        }
+        e++;
+        
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+
+            double click_nx = GetMouseX() / (double)RESOLUTION * 2.0 - 1.0;
+            double click_ny = GetMouseY() / (double)RESOLUTION * 2.0 - 1.0;
+
+            
+                points_data_set.push_back({ click_nx, click_ny, 1.0 });
+                nn.data.inputs.push_back({ click_nx, click_ny });
+                nn.data.targets.push_back({ 1.0 });
+
+        }
+
+        if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+
+            double click_nx = GetMouseX() / (double)RESOLUTION * 2.0 - 1.0;
+            double click_ny = GetMouseY() / (double)RESOLUTION * 2.0 - 1.0;
+
+                points_data_set.push_back({ click_nx, click_ny, 0.0 });
+                nn.data.inputs.push_back({ click_nx, click_ny });
+                nn.data.targets.push_back({ 0.0 });
+        } 
+
+        if (IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE)) {
+
+            double click_nx = GetMouseX() / (double)RESOLUTION * 2.0 - 1.0;
+            double click_ny = GetMouseY() / (double)RESOLUTION * 2.0 - 1.0;
+
+                if (!points_data_set.empty()) {
+                    int closest_index = 0;
+                    double smallest_dist = 999.0;
+
+                    for (size_t i = 0; i < points_data_set.size(); i++) {
+                        double dx = points_data_set[i].nx - click_nx;
+                        double dy = points_data_set[i].ny - click_ny;
+                        double d = std::sqrt(dx * dx + dy * dy);
+                        if (d < smallest_dist) {
+                            smallest_dist = d;
+                            closest_index = i;
                         }
-                        else if (dist > 0.55 && dist < 0.85) {
-                            points_data_set.push_back({ px, py, 0.0 });
-                        }   
-
                     }
-
-                    for (const auto& p : points_data_set) {
-                        nn.data.inputs.push_back({ p.nx, p.ny });
-                        nn.data.targets.push_back({ p.type });
+                    if (smallest_dist < 0.05) {
+                        points_data_set.erase(points_data_set.begin() + closest_index);
+                        nn.data.inputs.erase(nn.data.inputs.begin() + closest_index);
+                        nn.data.targets.erase(nn.data.targets.begin() + closest_index);
                     }
+                }
+            }
+        
 
+        BeginDrawing();
+
+            ClearBackground(BLACK);
+
+        for (int y = 0; y < RESOLUTION; y += 2) { 
+            for (int x = 0; x < RESOLUTION; x += 2) {
+                double nx = (double)x / RESOLUTION * 2.0 - 1.0;
+                double ny = (double)y / RESOLUTION * 2.0 - 1.0;
+
+                vector<double> prediction = nn.predict({ nx, ny });
+                double val = prediction[0]; 
+
+                unsigned char r, g, b;
+                if (val > 0.5) {
+                    double t = (val - 0.5) * 2.0; 
+                    r = static_cast<unsigned char>(225 - t * 20);
+                    g = static_cast<unsigned char>(235 - t * 15);
+                    b = static_cast<unsigned char>(245 + t * 10);
+                } else {
+                    double t = (0.5 - val) * 2.0; 
+                    r = static_cast<unsigned char>(245 + t * 10);
+                    g = static_cast<unsigned char>(235 - t * 15);
+                    b = static_cast<unsigned char>(225 - t * 20);
                 }
 
-                int e = 0;
-                double learning_rate = 0.05;
+                DrawPixel(x, y, Color{ r, g, b, 255 });
+                DrawPixel(x + 1, y, Color{ r, g, b, 255 });
+                DrawPixel(x, y + 1, Color{ r, g, b, 255 });
+                DrawPixel(x + 1, y + 1, Color{ r, g, b, 255 });
+            }
+        }
 
-                while (true) {
-                    
-                    if (!points_data_set.empty()) {
-                        nn.backpropagate(learning_rate, 1, 0, 0); 
+        for (const auto& p : points_data_set) {
+            int screen_x = static_cast<int>((p.nx + 1.0) * 0.5 * RESOLUTION);
+            int screen_y = static_cast<int>((p.ny + 1.0) * 0.5 * RESOLUTION);
+
+            unsigned char pr = (p.type == 1.0) ? 30  : 245;
+            unsigned char pg = (p.type == 1.0) ? 120 : 130;
+            unsigned char pb = (p.type == 1.0) ? 210 : 35;
+
+            for (int dy = -3; dy <= 3; dy++) {
+                for (int dx = -3; dx <= 3; dx++) {
+                    if (screen_x + dx >= 0 && screen_x + dx < RESOLUTION && screen_y + dy >= 0 && screen_y + dy < RESOLUTION) {
+                        if (dx == -3 || dx == 3 || dy == -3 || dy == 3) {
+                            DrawPixel(screen_x + dx, screen_y + dy, Color{ 255, 255, 255, 255 });
+                        } else {
+                            DrawPixel(screen_x + dx, screen_y + dy, Color{ pr, pg, pb, 255 });
+                        }
                     }
+                }
+            }
+        }
+        DrawText(TextFormat("Epoch: %d", e), 10, 10, 20, RAYWHITE);
+
+        EndDrawing();
+
+    }
+    CloseWindow();
+}
+   
+void generate_and_learn_map(NeuralNetwork& nn, int RESOLUTION, std::function<std::vector<double>(double, double)> target_generator)
+{
+    vector<vector<vector<double>>> target_map(RESOLUTION, vector<vector<double>>(RESOLUTION, vector<double>(3, 0.0)));
+
+    #pragma omp parallel for
+    for (int y = 0; y < RESOLUTION; y++) {
+        for (int x = 0; x < RESOLUTION; x++) {
+            double nx = (double)x / RESOLUTION * 3.0 - 1.5;
+            double ny = (double)y / RESOLUTION * 3.0 - 1.5;
+
+            std::vector<double> rgb = target_generator(nx, ny);
+
+            target_map[y][x][0] = rgb[0]; // R
+            target_map[y][x][1] = rgb[1]; // G
+            target_map[y][x][2] = rgb[2]; // B
+        }
+    }
+
+    int e = 0;
+    double learning_rate = 0.02;
+    mt19937 rng(1337);
+    uniform_int_distribution<int> dist_pixel(0, RESOLUTION - 1);
+
+
+    InitWindow(RESOLUTION, RESOLUTION, "AI Function Generation");
+    SetTargetFPS(60);
+
+    while (!WindowShouldClose()) {
+
+        nn.data.inputs.clear();
+                    nn.data.targets.clear();
+                    
+                    for (int i = 0; i < 8000; i++) {
+                        int rx = dist_pixel(rng);
+                        int ry = dist_pixel(rng);
+                        double nx = (double)rx / RESOLUTION * 3.0 - 1.5;
+                        double ny = (double)ry / RESOLUTION * 3.0 - 1.5;
+                        
+                        nn.data.inputs.push_back({ nx, ny });
+                        nn.data.targets.push_back({ target_map[ry][rx][0], target_map[ry][rx][1], target_map[ry][rx][2] });
+                    }
+
+                    nn.backpropagate(learning_rate, 1, 0, 0); 
                     e++;
 
-                    for (int y = 0; y < RESOLUTION; y += 2) { 
-                        for (int x = 0; x < RESOLUTION; x += 2) {
-                            double nx = (double)x / RESOLUTION * 2.0 - 1.0;
-                            double ny = (double)y / RESOLUTION * 2.0 - 1.0;
+        BeginDrawing();
 
-                            vector<double> prediction = nn.predict({ nx, ny });
-                            double val = prediction[0]; 
+            ClearBackground(BLACK);
 
-                            unsigned char r, g, b;
-                            if (val > 0.5) {
-                                double t = (val - 0.5) * 2.0; 
-                                r = static_cast<unsigned char>(225 - t * 20);
-                                g = static_cast<unsigned char>(235 - t * 15);
-                                b = static_cast<unsigned char>(245 + t * 10);
-                            } else {
-                                double t = (0.5 - val) * 2.0; 
-                                r = static_cast<unsigned char>(245 + t * 10);
-                                g = static_cast<unsigned char>(235 - t * 15);
-                                b = static_cast<unsigned char>(225 - t * 20);
-                            }
-
-                            screen.putPixel(x, y, r, g, b);
-                            screen.putPixel(x + 1, y, r, g, b);
-                            screen.putPixel(x, y + 1, r, g, b);
-                            screen.putPixel(x + 1, y + 1, r, g, b);
-                        }
-                    }
-
-                    for (const auto& p : points_data_set) {
-                        int screen_x = static_cast<int>((p.nx + 1.0) * 0.5 * RESOLUTION);
-                        int screen_y = static_cast<int>((p.ny + 1.0) * 0.5 * RESOLUTION);
-
-                        unsigned char pr = (p.type == 1.0) ? 30  : 245;
-                        unsigned char pg = (p.type == 1.0) ? 120 : 130;
-                        unsigned char pb = (p.type == 1.0) ? 210 : 35;
-
-                        for (int dy = -3; dy <= 3; dy++) {
-                            for (int dx = -3; dx <= 3; dx++) {
-                                if (screen_x + dx >= 0 && screen_x + dx < RESOLUTION && screen_y + dy >= 0 && screen_y + dy < RESOLUTION) {
-                                    if (dx == -3 || dx == 3 || dy == -3 || dy == 3) {
-                                        screen.putPixel(screen_x + dx, screen_y + dy, 255, 255, 255);
-                                    } else {
-                                        screen.putPixel(screen_x + dx, screen_y + dy, pr, pg, pb);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    screen.reloadScreen();
-                    cout << "Epoch: " << e << "\n";
-
-
-
-                    if (screen.new_click) {
-                        screen.new_click = false;
-
-                        double click_nx = (double)screen.last_click_x / RESOLUTION * 2.0 - 1.0;
-                        double click_ny = (double)screen.last_click_y / RESOLUTION * 2.0 - 1.0;
-
-                        if (screen.type_click == 1) { 
-                            points_data_set.push_back({ click_nx, click_ny, 1.0 });
-                            nn.data.inputs.push_back({ click_nx, click_ny });
-                            nn.data.targets.push_back({ 1.0 });
-                        } 
-                        else if (screen.type_click == 2) { 
-                            points_data_set.push_back({ click_nx, click_ny, 0.0 });
-                            nn.data.inputs.push_back({ click_nx, click_ny });
-                            nn.data.targets.push_back({ 0.0 });
-                        } 
-                        else if (screen.type_click == 3) { 
-                            if (!points_data_set.empty()) {
-                                int closest_index = 0;
-                                double smallest_dist = 999.0;
-
-                                for (size_t i = 0; i < points_data_set.size(); i++) {
-                                    double dx = points_data_set[i].nx - click_nx;
-                                    double dy = points_data_set[i].ny - click_ny;
-                                    double d = std::sqrt(dx * dx + dy * dy);
-                                    if (d < smallest_dist) {
-                                        smallest_dist = d;
-                                        closest_index = i;
-                                    }
-                                }
-                                if (smallest_dist < 0.05) {
-                                    points_data_set.erase(points_data_set.begin() + closest_index);
-                                    nn.data.inputs.erase(nn.data.inputs.begin() + closest_index);
-                                    nn.data.targets.erase(nn.data.targets.begin() + closest_index);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-  
-    void generate_and_learn_map(NeuralNetwork& nn, ExternalScreen& screen, int RESOLUTION, std::function<std::vector<double>(double, double)> target_generator)
-    {
-        vector<vector<vector<double>>> target_map(RESOLUTION, vector<vector<double>>(RESOLUTION, vector<double>(3, 0.0)));
-
-        #pragma omp parallel for
-        for (int y = 0; y < RESOLUTION; y++) {
-            for (int x = 0; x < RESOLUTION; x++) {
+        #pragma omp parallel for schedule(dynamic)
+        for (int y = 0; y < RESOLUTION; y += 2) { 
+            for (int x = 0; x < RESOLUTION; x += 2) {
                 double nx = (double)x / RESOLUTION * 3.0 - 1.5;
                 double ny = (double)y / RESOLUTION * 3.0 - 1.5;
-
-                std::vector<double> rgb = target_generator(nx, ny);
-
-                target_map[y][x][0] = rgb[0]; // R
-                target_map[y][x][1] = rgb[1]; // G
-                target_map[y][x][2] = rgb[2]; // B
-            }
-        }
-
-        int e = 0;
-        double learning_rate = 0.02;
-        mt19937 rng(1337);
-        uniform_int_distribution<int> dist_pixel(0, RESOLUTION - 1);
-
-        while (true) {
-
-            nn.data.inputs.clear();
-            nn.data.targets.clear();
-            
-            for (int i = 0; i < 8000; i++) {
-                int rx = dist_pixel(rng);
-                int ry = dist_pixel(rng);
-                double nx = (double)rx / RESOLUTION * 3.0 - 1.5;
-                double ny = (double)ry / RESOLUTION * 3.0 - 1.5;
                 
-                nn.data.inputs.push_back({ nx, ny });
-                nn.data.targets.push_back({ target_map[ry][rx][0], target_map[ry][rx][1], target_map[ry][rx][2] });
+                vector<double> prediction = nn.predict({ nx, ny });
+                
+                unsigned char r = static_cast<unsigned char>(std::clamp(prediction[0], 0.0, 1.0) * 255);
+                unsigned char g = static_cast<unsigned char>(std::clamp(prediction[1], 0.0, 1.0) * 255);
+                unsigned char b = static_cast<unsigned char>(std::clamp(prediction[2], 0.0, 1.0) * 255);
+                
+                DrawPixel(x, y, Color{ r, g, b, 255 });
+                DrawPixel(x + 1, y, Color{ r, g, b, 255 });
+                DrawPixel(x, y + 1, Color{ r, g, b, 255 });
+                DrawPixel(x + 1, y + 1, Color{ r, g, b, 255 });
             }
-
-            nn.backpropagate(learning_rate, 1, 0, 0); 
-            e++;
-
-            #pragma omp parallel for schedule(dynamic)
-            for (int y = 0; y < RESOLUTION; y += 2) { 
-                for (int x = 0; x < RESOLUTION; x += 2) {
-                    double nx = (double)x / RESOLUTION * 3.0 - 1.5;
-                    double ny = (double)y / RESOLUTION * 3.0 - 1.5;
-                    
-                    vector<double> prediction = nn.predict({ nx, ny });
-                    
-                    unsigned char r = static_cast<unsigned char>(std::clamp(prediction[0], 0.0, 1.0) * 255);
-                    unsigned char g = static_cast<unsigned char>(std::clamp(prediction[1], 0.0, 1.0) * 255);
-                    unsigned char b = static_cast<unsigned char>(std::clamp(prediction[2], 0.0, 1.0) * 255);
-                    
-                    screen.putPixel(x, y, r, g, b);
-                    screen.putPixel(x + 1, y, r, g, b);
-                    screen.putPixel(x, y + 1, r, g, b);
-                    screen.putPixel(x + 1, y + 1, r, g, b);
-                }
-            }
-
-            screen.reloadScreen();
-            cout << "Epoch: " << e << "\n";
         }
+
+        DrawText(TextFormat("Epoch: %d", e), 10, 10, 20, RAYWHITE);
     }
+
+        EndDrawing();
+
+
+
+    CloseWindow();
+}
+
+
 
     //? Functions from AI
 
@@ -314,4 +365,3 @@ namespace GUI_FunctionsUtils
         };
     }
 
-}

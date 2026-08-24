@@ -1,21 +1,19 @@
 #define NOBYTE    
 #define NOMINMAX   
 
-#include <windows.h>
 #include <iostream>
 #include <string>
 
 #include "include/neural_network.hpp"
 #include "include/utils/nn_signal_handler_util.hpp"
 #include "include/utils/mnist_util.hpp"
-#include "include/utils/gui_video_util.hpp"
 #include "include/utils/functions_util.hpp"
 
 using namespace std;
 
 const string model_name = "test_model";
 
-const int task = 1;             
+const int task = -1;             
 // 0 - Create
 // 1 - Change metadata
 // 2 - Learn <- with input and target files
@@ -134,21 +132,19 @@ namespace Tasks{
     }
     void classify(){
         const int RESOLUTION = 800; 
-        GUI_HUD::ExternalScreen screen(RESOLUTION, RESOLUTION);
 
         vector<string> activations = { "none", "sigmoid", "sigmoid", "sigmoid" };
 
         NeuralNetwork nn({2, 16, 16, 1}, activations); 
-        GUI_FunctionsUtils::classify_points(nn,screen,RESOLUTION,true);
+        classify_points(nn,RESOLUTION,true);
     }
     void generate_functions(){
         const int RESOLUTION = 800; 
-        GUI_HUD::ExternalScreen screen(RESOLUTION, RESOLUTION);
         
         vector<string> activations = { "none", "sigmoid", "sigmoid", "sigmoid" };
         NeuralNetwork nn({2, 64, 64, 1}, activations); ;
-        // GUI_HUD::generate_and_learn_map(nn, screen, RESOLUTION, GUI_HUD::julia_generator);
-        GUI_FunctionsUtils::old_generation(nn, screen, RESOLUTION);
+        // generate_and_learn_map(nn, screen, RESOLUTION, GUI_HUD::julia_generator);
+        old_generation(nn, RESOLUTION);
     }
 }
 
@@ -156,51 +152,33 @@ int main( int argc , char* argv[] )
 {
     switch (task)   
     {
-        case 0: 
-        {       
+        case 0:   
             Tasks::create();    
             break; 
-        }
         case 1:
-        {   
             Tasks::change_metadata();
-            break; 
-        }
+            break;
         case 2: 
-        {  
             Tasks::learn();
             break;
-        }
         case 3: 
-        {
             Tasks::predict();
             break;
-        }
         case 4: 
-        {
             Tasks::test_mnist();
             break;
-        }
         case 5:
-        {   
             Tasks::learn_mnist();
             break;
-        }
         case 6:
-        {
             Tasks::classify();
             break;
-        }
         case 7:
-        {
             Tasks::generate_functions();
             break;
-        }
         default:
-        {
             cerr<<"No test case selected, change task value.";
             break;
-        }
     }   
     return 0;
 }
