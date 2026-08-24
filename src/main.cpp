@@ -13,32 +13,9 @@
 
 using namespace std;
 
-const string model_name = "test_model";   
+const string model_name = "test_model";
 
-namespace DIRS {
-    //? Directries
-    const string MODELS_DIR = "../models/";
-    const string DATA_DIR = "../data/";
-    const string IO_DIR = DATA_DIR + "io/";
-    const string MNIST_DIR = DATA_DIR + "mnist/";
-    const string IMAGES_DIR = DATA_DIR + "images/";
-
-    //? Files
-    const string SAVE_FILE = MODELS_DIR + model_name + ".json";
-    const string INPUT_FILE = IO_DIR + "inputs.in";
-    const string TARGET_FILE = IO_DIR + "targets.in";
-
-    //? MNIST dataset files
-    const string MNIST_MODEL_NAME = "mnist_model"; 
-    const string MNIST_SAVE_FILE = MODELS_DIR + MNIST_MODEL_NAME + ".json";
-    const string TRAINING_MNIST_INPUTS_FILE = MNIST_DIR + "train-images.idx3-ubyte";
-    const string TRAINING_MNIST_LABELS_FILE = MNIST_DIR + "train-labels.idx1-ubyte";
-    const string MNIST_INPUTS_FILE = MNIST_DIR + "t10k-images.idx3-ubyte";
-    const string MNIST_LABELS_FILE = MNIST_DIR + "t10k-labels.idx1-ubyte";
-}
-using namespace DIRS;
-
-const int task = -1;             
+const int task = 1;             
 // 0 - Create
 // 1 - Change metadata
 // 2 - Learn <- with input and target files
@@ -77,27 +54,27 @@ namespace Tasks{
         NeuralNetwork nn = NeuralNetwork( {INPUT, 5, 5, OUTPUT}, activations, meta ); 
         
         nn.update_timestamp(); 
-        nn.save_model(SAVE_FILE);
+        nn.save_model(model_name);
     }
     void change_metadata(){
-        NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );  
-        nn.load_model(SAVE_FILE);
+        NeuralNetwork nn = NeuralNetwork( nn.get_params(model_name) );  
+        nn.load_model(model_name);
         
         
         nn.meta.model_version = "1.0.0";
         nn.update_timestamp();
         
         
-        nn.save_model(SAVE_FILE);
+        nn.save_model(model_name);
     }
     void learn(){
         const bool saveOnInterrupt = true;  // If true, the model will be saved when the program receives an interrupt signal (Ctrl+C)
     
-        NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );  
+        NeuralNetwork nn = NeuralNetwork( nn.get_params(model_name) );  
         NeuralNetworkSignalHandler::signalHandler(&nn, saveOnInterrupt);
-        nn.load_model(SAVE_FILE);
+        nn.load_model(model_name);
         
-        nn.loadData(INPUT_FILE, TARGET_FILE);
+        nn.loadData(DIRS::INPUT_FILE, DIRS::TARGET_FILE);
         
         const int epochs = 50000;
         const double learning_rate = 0.05;
@@ -107,12 +84,12 @@ namespace Tasks{
         nn.backpropagate(learning_rate, epochs, checkpointInterval, displayInterval); 
         
         
-        nn.save_model(SAVE_FILE);
+        nn.save_model(model_name);
     }
     void predict(){
-        NeuralNetwork nn = NeuralNetwork( nn.get_params(SAVE_FILE) );    
-        nn.load_model(SAVE_FILE);
-        nn.loadData(INPUT_FILE, TARGET_FILE);
+        NeuralNetwork nn = NeuralNetwork( nn.get_params(model_name) );    
+        nn.load_model(model_name);
+        nn.loadData(DIRS::INPUT_FILE, DIRS::TARGET_FILE);
 
 
         for (int i = 0; i < nn.data.inputs.size(); i++)
@@ -125,25 +102,25 @@ namespace Tasks{
         }
     }
     void test_mnist(){
-        NeuralNetwork nn = NeuralNetwork( nn.get_params(MNIST_SAVE_FILE) );
-        nn.load_model(MNIST_SAVE_FILE);
+        NeuralNetwork nn = NeuralNetwork( nn.get_params(DIRS::MNIST_MODEL_NAME) );
+        nn.load_model(DIRS::MNIST_MODEL_NAME);
 
         const int max_samples = 1000; 
         const int tests_number = 1000;
 
-        MNIST::MnistTest(nn, MNIST_INPUTS_FILE, MNIST_LABELS_FILE, max_samples, tests_number);
+        MNIST::MnistTest(nn, DIRS::MNIST_INPUTS_FILE, DIRS::MNIST_LABELS_FILE, max_samples, tests_number);
     }
     void learn_mnist(){
         const bool saveOnInterrupt = true;  // If true, the model will be saved when the program receives an interrupt signal (Ctrl+C)
 
-        NeuralNetwork nn = NeuralNetwork( nn.get_params(MNIST_SAVE_FILE) );  
+        NeuralNetwork nn = NeuralNetwork( nn.get_params(DIRS::MNIST_MODEL_NAME) );  
         NeuralNetworkSignalHandler::signalHandler(&nn, saveOnInterrupt);
-        nn.load_model(MNIST_SAVE_FILE);
+        nn.load_model(DIRS::MNIST_MODEL_NAME);
 
         const int mnist_max_samples = -1;  // -1 means load all samples, otherwise it will load only the specified number of samples from the mnist dataset
 
 
-        MNIST::loadMnist(nn, TRAINING_MNIST_INPUTS_FILE, TRAINING_MNIST_LABELS_FILE, mnist_max_samples); 
+        MNIST::loadMnist(nn, DIRS::TRAINING_MNIST_INPUTS_FILE, DIRS::TRAINING_MNIST_LABELS_FILE, mnist_max_samples); 
 
         const int epochs = 50000;
         const double learning_rate = 0.05;
@@ -153,7 +130,7 @@ namespace Tasks{
         nn.backpropagate(learning_rate, epochs, checkpointInterval, displayInterval); 
 
 
-        nn.save_model(MNIST_SAVE_FILE);
+        nn.save_model(DIRS::MNIST_MODEL_NAME);
     }
     void classify(){
         const int RESOLUTION = 800; 

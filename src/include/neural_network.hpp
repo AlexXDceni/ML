@@ -11,6 +11,7 @@
 #include <chrono>
 #include <sstream>
 #include <omp.h>
+#include <filesystem>
 
 #include "external/json.hpp"
 
@@ -18,6 +19,25 @@ using namespace std;
 using json = nlohmann::json;
 using namespace std::chrono;
 
+namespace DIRS {
+    //? Directries
+    const string MODELS_DIR = "../models/";
+    const string DATA_DIR = "../data/";
+    const string IO_DIR = DATA_DIR + "io/";
+    const string MNIST_DIR = DATA_DIR + "mnist/";
+    const string IMAGES_DIR = DATA_DIR + "images/";
+
+    //? Files
+    const string INPUT_FILE = IO_DIR + "inputs.in";
+    const string TARGET_FILE = IO_DIR + "targets.in";
+
+    //? MNIST dataset files
+    const string MNIST_MODEL_NAME = "mnist_model"; 
+    const string TRAINING_MNIST_INPUTS_FILE = MNIST_DIR + "train-images.idx3-ubyte";
+    const string TRAINING_MNIST_LABELS_FILE = MNIST_DIR + "train-labels.idx1-ubyte";
+    const string MNIST_INPUTS_FILE = MNIST_DIR + "t10k-images.idx3-ubyte";
+    const string MNIST_LABELS_FILE = MNIST_DIR + "t10k-labels.idx1-ubyte";
+}
 
 double get_random()
 {
@@ -143,11 +163,11 @@ class NeuralNetwork
         void update_timestamp() {
             meta.timestamp = get_time();
         }
-        void load_model(const string &filename){
+        void load_model(const string &model_name){
 
-            cout << "Loading model from " << filename << "..." <<endl;
+            cout << "Loading model from " << model_name << "..." <<endl;
 
-            ifstream file(filename);
+            ifstream file( DIRS::MODELS_DIR + model_name + "/config.json");
 
             if (!file.is_open()) {
                 cerr << "Error: Load file not found" << endl;
@@ -238,11 +258,22 @@ class NeuralNetwork
 
             cout << "Neural model loaded successfully!" << endl;
         }
-        void save_model(const string &filename){
+        void save_model(const string &model_name){
 
-            cout << "Saving model to " << filename << "..." << endl;
-            
-            ofstream file(filename);
+            string path = DIRS::MODELS_DIR + model_name;
+            error_code ec;
+
+            filesystem::create_directories(path, ec);
+
+            if (ec) {
+                cerr << "Error: Could not create directory " << path << " -> " << ec.message() << endl;
+                return; 
+            }
+
+            cout << "Saving model to " << path << "..." << endl;
+        
+
+            ofstream file(path + "/config.json");
 
             if (!file.is_open()) {
                 cerr << "Error opening file for writing." << endl;
@@ -307,9 +338,9 @@ class NeuralNetwork
             file.close();
             cout << "Model saved successfully!" << endl;
         }
-        tuple<vector<int>, vector<string>,  metadata> get_params(const string &filename){
+        tuple<vector<int>, vector<string>,  metadata> get_params(const string &model_name){
             
-            ifstream file(filename);
+            ifstream file(DIRS::MODELS_DIR + model_name + "/config.json");
 
             if (!file.is_open()) {
                 cerr << "Error: Load file not found" << endl;
