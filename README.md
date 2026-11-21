@@ -1,4 +1,5 @@
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/AlexXDceni/ML)
+[![Architecture diagram](https://gitdiagram.com/diagram-badge.svg)](https://gitdiagram.com/alexxdceni/ml?utm_source=readme&utm_medium=badge)
 
 I am making my own deep neural network, that is all.
 
